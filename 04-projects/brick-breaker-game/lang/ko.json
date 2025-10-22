@@ -1,0 +1,50 @@
+{
+  "pageTitle": "🧱 벽돌깨기 게임",
+  "gameTitle": "🧱 벽돌깨기",
+
+  "score": "점수",
+  "lives": "생명",
+
+  "gameOver": "게임 오버! 😢",
+  "finalScoreLabel": "최종 점수:",
+  "highScoreLabel": "최고 점수:",
+  "restartBtn": "다시 시작",
+  "menuBtn": "메뉴로",
+
+  "gameWin": "게임 클리어! 🎉",
+  "congratulations": "축하합니다! 모든 벽돌을 파괴했습니다!",
+  "playAgainBtn": "다시 도전",
+
+  "startTitle": "🧱 벽돌깨기",
+  "controlsTitle": "🎮 조작법",
+  "controlsText": "← → 방향키 또는 마우스로 패들 이동<br>스페이스바로 게임 시작/일시정지<br><br>모든 벽돌을 깨보세요!",
+  "startBtn": "게임 시작",
+  "difficultyLabel": "난이도:",
+  "difficultyEasy": "쉬움",
+  "difficultyNormal": "보통",
+  "difficultyHard": "어려움",
+
+  "paused": "일시정지 ⏸️",
+  "pauseInstruction": "스페이스바를 눌러 계속하기",
+  "resumeBtn": "계속하기",
+  "quitBtn": "게임 종료",
+
+  "pauseBtn": "일시정지",
+  "muteBtn": "소리",
+  "mutedBtn": "소리",
+  "fullscreenBtn": "전체화면",
+
+  "statsTitle": "📊 게임 통계",
+  "totalGames": "총 게임 수",
+  "bestScore": "최고 점수",
+  "totalBricks": "총 벽돌 파괴",
+
+  "launchInstruction": "스페이스바 또는 클릭하여 시작",
+
+  "languageSelect": "언어:",
+  "themeSelect": "테마:",
+  "themeClassic": "클래식",
+  "themeOcean": "오션",
+  "themeSunset": "선셋",
+  "themeForest": "포레스트"
+}

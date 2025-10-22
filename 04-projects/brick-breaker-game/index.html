@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧱 벽돌깨기 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- 게임 헤더 -->
+        <header class="game-header">
+            <h1 data-i18n="gameTitle">🧱 벽돌깨기</h1>
+            <div class="game-info">
+                <div class="info-item">
+                    <span class="label" data-i18n="score">점수</span>
+                    <span id="score" class="value">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="label" data-i18n="lives">생명</span>
+                    <span id="lives" class="value">❤️❤️❤️</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 게임 캔버스 -->
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- 게임 오버 화면 -->
+            <div id="gameOverScreen" class="overlay hidden">
+                <div class="overlay-content">
+                    <h2 data-i18n="gameOver">게임 오버! 😢</h2>
+                    <p class="final-score"><span data-i18n="finalScoreLabel">최종 점수:</span> <span id="finalScore">0</span></p>
+                    <p class="high-score"><span data-i18n="highScoreLabel">최고 점수:</span> <span id="highScore">0</span></p>
+                    <button id="restartBtn" class="game-btn" data-i18n="restartBtn">다시 시작</button>
+                    <button id="menuBtn" class="game-btn secondary" data-i18n="menuBtn">메뉴로</button>
+                </div>
+            </div>
+
+            <!-- 게임 승리 화면 -->
+            <div id="winScreen" class="overlay hidden">
+                <div class="overlay-content">
+                    <h2 data-i18n="gameWin">게임 클리어! 🎉</h2>
+                    <p class="final-score"><span data-i18n="finalScoreLabel">최종 점수:</span> <span id="winFinalScore">0</span></p>
+                    <p class="congratulations" data-i18n="congratulations">축하합니다! 모든 벽돌을 파괴했습니다!</p>
+                    <button id="playAgainBtn" class="game-btn" data-i18n="playAgainBtn">다시 도전</button>
+                    <button id="winMenuBtn" class="game-btn secondary" data-i18n="menuBtn">메뉴로</button>
+                </div>
+            </div>
+
+            <!-- 시작 화면 -->
+            <div id="startScreen" class="overlay">
+                <div class="overlay-content">
+                    <h2 data-i18n="startTitle">🧱 벽돌깨기</h2>
+                    <p class="instructions" data-i18n="controlsText">
+                        🎮 조작법<br><br>
+                        ← → 방향키 또는 마우스로 패들 이동<br>
+                        스페이스바로 게임 시작/일시정지<br><br>
+                        모든 벽돌을 깨보세요!
+                    </p>
+                    <button id="startBtn" class="game-btn" data-i18n="startBtn">게임 시작</button>
+                    <div class="settings-row">
+                        <div class="difficulty-select">
+                            <label data-i18n="difficultyLabel">난이도:</label>
+                            <select id="difficultySelect">
+                                <option value="easy" data-i18n="difficultyEasy">쉬움</option>
+                                <option value="normal" selected data-i18n="difficultyNormal">보통</option>
+                                <option value="hard" data-i18n="difficultyHard">어려움</option>
+                            </select>
+                        </div>
+                        <div class="language-select">
+                            <label data-i18n="languageSelect">언어:</label>
+                            <select id="languageSelect">
+                                <option value="ko">한국어</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        <div class="theme-select">
+                            <label data-i18n="themeSelect">테마:</label>
+                            <select id="themeSelect">
+                                <option value="classic" data-i18n="themeClassic">Classic</option>
+                                <option value="ocean" data-i18n="themeOcean">Ocean</option>
+                                <option value="sunset" data-i18n="themeSunset">Sunset</option>
+                                <option value="forest" data-i18n="themeForest">Forest</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 일시정지 화면 -->
+            <div id="pauseScreen" class="overlay hidden">
+                <div class="overlay-content">
+                    <h2 data-i18n="paused">일시정지 ⏸️</h2>
+                    <p data-i18n="pauseInstruction">스페이스바를 눌러 계속하기</p>
+                    <button id="resumeBtn" class="game-btn" data-i18n="resumeBtn">계속하기</button>
+                    <button id="quitBtn" class="game-btn secondary" data-i18n="quitBtn">게임 종료</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 컨트롤 -->
+        <div class="game-controls">
+            <button id="pauseBtn" class="control-btn">⏸️ <span data-i18n="pauseBtn">일시정지</span></button>
+            <button id="muteBtn" class="control-btn">🔊 <span data-i18n="muteBtn">소리</span></button>
+            <button id="fullscreenBtn" class="control-btn">⛶ <span data-i18n="fullscreenBtn">전체화면</span></button>
+        </div>
+
+        <!-- 통계 -->
+        <div class="game-stats">
+            <h3 data-i18n="statsTitle">📊 게임 통계</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label" data-i18n="totalGames">총 게임 수</span>
+                    <span id="totalGames" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label" data-i18n="bestScore">최고 점수</span>
+                    <span id="bestScore" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label" data-i18n="totalBricks">총 벽돌 파괴</span>
+                    <span id="totalBricks" class="stat-value">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사운드 효과 (Web Audio API 사용을 위한 준비) -->
+    <audio id="hitSound" preload="auto">
+        <!-- 실제로는 Web Audio API로 생성 -->
+    </audio>
+
+    <script src="game.js"></script>
+</body>
+</html>

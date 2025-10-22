@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌤️ 날씨 대시보드</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app" class="app">
+        <!-- 로딩 화면 -->
+        <div id="loadingScreen" class="loading-screen">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>날씨 정보를 불러오는 중...</p>
+            </div>
+        </div>
+
+        <!-- 에러 화면 -->
+        <div id="errorScreen" class="error-screen hidden">
+            <div class="error-content">
+                <h2>😕 문제가 발생했습니다</h2>
+                <p id="errorMessage"></p>
+                <button id="retryBtn" class="retry-btn">다시 시도</button>
+            </div>
+        </div>
+
+        <!-- 메인 대시보드 -->
+        <div id="dashboard" class="dashboard hidden">
+            <!-- 헤더 -->
+            <header class="header">
+                <div class="header-content">
+                    <h1>🌤️ 날씨 대시보드</h1>
+                    <div class="header-controls">
+                        <button id="locationBtn" class="icon-btn" title="현재 위치">
+                            📍
+                        </button>
+                        <button id="searchBtn" class="icon-btn" title="도시 검색">
+                            🔍
+                        </button>
+                        <button id="favoritesBtn" class="icon-btn" title="즐겨찾기">
+                            ⭐
+                        </button>
+                        <button id="refreshBtn" class="icon-btn" title="새로고침">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 검색 바 -->
+            <div id="searchContainer" class="search-container hidden">
+                <div class="search-box">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="도시 이름을 입력하세요 (예: Seoul, Tokyo, New York)"
+                        class="search-input"
+                    >
+                    <button id="searchSubmit" class="search-submit">검색</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- 현재 날씨 -->
+            <section class="current-weather">
+                <div class="current-info">
+                    <div class="current-main">
+                        <div class="temperature">
+                            <span id="currentTemp">--</span>°C
+                        </div>
+                        <div class="weather-info">
+                            <h2 id="currentLocation">--</h2>
+                            <p id="currentDescription">--</p>
+                            <p id="currentTime">--</p>
+                        </div>
+                    </div>
+                    <div class="weather-icon">
+                        <img id="currentIcon" src="" alt="날씨 아이콘">
+                    </div>
+                </div>
+                
+                <div class="current-details">
+                    <div class="detail-item">
+                        <span class="detail-label">체감온도</span>
+                        <span id="feelsLike">--°C</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">습도</span>
+                        <span id="humidity">--%</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">바람</span>
+                        <span id="windSpeed">-- m/s</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">기압</span>
+                        <span id="pressure">-- hPa</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">가시거리</span>
+                        <span id="visibility">-- km</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">UV 지수</span>
+                        <span id="uvIndex">--</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 시간별 예보 -->
+            <section class="hourly-forecast">
+                <h3>시간별 예보</h3>
+                <div id="hourlyContainer" class="hourly-container">
+                    <!-- 동적으로 생성될 시간별 예보들 -->
+                </div>
+            </section>
+
+            <!-- 5일 예보 -->
+            <section class="daily-forecast">
+                <h3>5일 예보</h3>
+                <div id="dailyContainer" class="daily-container">
+                    <!-- 동적으로 생성될 일별 예보들 -->
+                </div>
+            </section>
+
+            <!-- 즐겨찾기 -->
+            <section id="favoritesSection" class="favorites-section hidden">
+                <h3>⭐ 즐겨찾기</h3>
+                <div id="favoritesContainer" class="favorites-container">
+                    <!-- 동적으로 생성될 즐겨찾기 도시들 -->
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

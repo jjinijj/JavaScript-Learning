@@ -1,0 +1,409 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-gradient-end: #1e1b4b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+
+    --border-radius: 12px;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* 테마: Ocean (파란색) */
+[data-theme="ocean"] {
+    --primary-color: #0ea5e9;
+    --secondary-color: #06b6d4;
+    --bg-dark: #0c4a6e;
+    --bg-card: #075985;
+    --bg-gradient-end: #1e3a8a;
+}
+
+/* 테마: Sunset (주황/빨강) */
+[data-theme="sunset"] {
+    --primary-color: #f97316;
+    --secondary-color: #ef4444;
+    --bg-dark: #7c2d12;
+    --bg-card: #9a3412;
+    --bg-gradient-end: #991b1b;
+}
+
+/* 테마: Forest (초록색) */
+[data-theme="forest"] {
+    --primary-color: #10b981;
+    --secondary-color: #059669;
+    --bg-dark: #064e3b;
+    --bg-card: #065f46;
+    --bg-gradient-end: #14532d;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-gradient-end) 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.game-container {
+    max-width: 900px;
+    width: 100%;
+}
+
+/* 게임 헤더 */
+.game-header {
+    background: var(--bg-card);
+    padding: 20px 30px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+.game-header h1 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+}
+
+.info-item {
+    text-align: center;
+}
+
+.info-item .label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.info-item .value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+/* 캔버스 래퍼 */
+.canvas-wrapper {
+    position: relative;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    background: #1a1a2e;
+}
+
+/* 오버레이 화면 */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    z-index: 10;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 40px;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* 시작 화면만 더 넓게 (설정이 많아서) */
+#startScreen .overlay-content {
+    max-width: 550px;
+}
+
+.overlay-content h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.overlay-content p {
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.instructions {
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+.final-score,
+.level-info,
+.score-info {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.high-score {
+    color: var(--warning-color);
+}
+
+/* 버튼 */
+.game-btn {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 5px;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+.game-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+}
+
+.game-btn:active {
+    transform: translateY(0);
+}
+
+.game-btn.secondary {
+    background: var(--text-secondary);
+    box-shadow: none;
+}
+
+.game-btn.secondary:hover {
+    background: #94a3b8;
+}
+
+/* 설정 행 (난이도, 언어, 테마 가로 배치) */
+.settings-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* 난이도 선택 & 언어 선택 & 테마 선택 */
+.difficulty-select,
+.language-select,
+.theme-select {
+    flex: 1;
+    min-width: 120px;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.difficulty-select label,
+.language-select label,
+.theme-select label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.difficulty-select select,
+.language-select select,
+.theme-select select {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+
+/* 게임 컨트롤 */
+.game-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.control-btn {
+    padding: 10px 20px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.control-btn:hover {
+    background: #334155;
+    border-color: var(--primary-color);
+}
+
+/* 게임 통계 */
+.game-stats {
+    background: var(--bg-card);
+    padding: 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.game-stats h3 {
+    font-size: 1.25rem;
+    margin-bottom: 20px;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .game-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .game-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .overlay-content {
+        padding: 30px 20px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .game-controls {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+    
+    .game-header {
+        padding: 15px;
+    }
+    
+    .control-btn {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+    }
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.overlay-content {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* 커서 */
+.canvas-wrapper {
+    cursor: none; /* 게임 중에는 커서 숨김 */
+}
+
+/* 오버레이(일시정지, 게임오버 등) 위에서는 커서 표시 */
+.overlay {
+    cursor: default;
+}
+
+.overlay * {
+    cursor: default;
+}

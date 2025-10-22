@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⏰ 비동기 프로그래밍 기초</title>
+    <link rel="stylesheet" href="async-basics.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏰ 비동기 프로그래밍 기초</h1>
+            <p>Unity의 코루틴과 비슷한 JavaScript 비동기 처리를 배워보세요!</p>
+        </header>
+
+        <div class="section">
+            <h2>🔄 setTimeout & setInterval</h2>
+            <div class="controls">
+                <button id="startTimerBtn">3초 타이머 시작</button>
+                <button id="stopTimerBtn">타이머 중지</button>
+                <button id="startCounterBtn">1초마다 카운터</button>
+                <button id="stopCounterBtn">카운터 중지</button>
+            </div>
+            <div class="display">
+                <div id="timerDisplay">타이머: 준비</div>
+                <div id="counterDisplay">카운터: 0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Promise 기초</h2>
+            <div class="controls">
+                <button id="simplePromiseBtn">간단한 Promise</button>
+                <button id="randomPromiseBtn">랜덤 성공/실패</button>
+                <button id="chainPromiseBtn">Promise 체이닝</button>
+            </div>
+            <div class="display">
+                <div id="promiseResult">결과가 여기에 표시됩니다</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🚀 async/await</h2>
+            <div class="controls">
+                <button id="asyncBtn">async/await 테스트</button>
+                <button id="parallelBtn">병렬 처리</button>
+                <button id="sequentialBtn">순차 처리</button>
+            </div>
+            <div class="display">
+                <div id="asyncResult">결과가 여기에 표시됩니다</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 실제 API 호출</h2>
+            <div class="controls">
+                <input type="text" id="pokemonInput" placeholder="포켓몬 이름 (영어)">
+                <button id="fetchPokemonBtn">포켓몬 정보 가져오기</button>
+                <button id="multipleRequestBtn">여러 요청 동시에</button>
+            </div>
+            <div class="display">
+                <div id="apiResult">API 결과가 여기에 표시됩니다</div>
+            </div>
+        </div>
+
+        <div class="logs">
+            <h3>📋 실행 로그</h3>
+            <div id="logContainer"></div>
+            <button id="clearLogsBtn">로그 지우기</button>
+        </div>
+    </div>
+
+    <script src="async-basics.js"></script>
+</body>
+</html>

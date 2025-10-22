@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>DOM 테스트</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            padding: 20px; 
+            background: #f0f0f0;
+        }
+        .container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+        }
+        .highlight { 
+            background: yellow; 
+            padding: 5px; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn-blue { background: #3498db; color: white; }
+        .btn-green { background: #27ae60; color: white; }
+        .btn-red { background: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="mainTitle">🌐 DOM 조작 테스트</h1>
+        
+        <p id="description">이 텍스트를 JavaScript로 바꿔보세요!</p>
+        
+        <div>
+            <button id="changeTextBtn" class="btn-blue">텍스트 변경</button>
+            <button id="changeColorBtn" class="btn-green">색상 변경</button>
+            <button id="hideBtn" class="btn-red">숨기기/보이기</button>
+        </div>
+        
+        <div id="output">
+            <h3>출력 영역:</h3>
+            <ul id="itemList"></ul>
+        </div>
+        
+        <input type="text" id="textInput" placeholder="여기에 입력하세요">
+        <button id="addBtn" class="btn-green">추가</button>
+    </div>
+
+    <script src="dom-test.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "pageTitle": "🧱 Brick Breaker Game",
+  "gameTitle": "🧱 Brick Breaker",
+
+  "score": "Score",
+  "lives": "Lives",
+
+  "gameOver": "Game Over! 😢",
+  "finalScoreLabel": "Final Score:",
+  "highScoreLabel": "High Score:",
+  "restartBtn": "Restart",
+  "menuBtn": "Menu",
+
+  "gameWin": "Game Clear! 🎉",
+  "congratulations": "Congratulations! You destroyed all the bricks!",
+  "playAgainBtn": "Play Again",
+
+  "startTitle": "🧱 Brick Breaker",
+  "controlsTitle": "🎮 Controls",
+  "controlsText": "← → Arrow keys or Mouse to move paddle<br>Spacebar to start/pause game<br><br>Break all the bricks!",
+  "startBtn": "Start Game",
+  "difficultyLabel": "Difficulty:",
+  "difficultyEasy": "Easy",
+  "difficultyNormal": "Normal",
+  "difficultyHard": "Hard",
+
+  "paused": "Paused ⏸️",
+  "pauseInstruction": "Press spacebar to continue",
+  "resumeBtn": "Resume",
+  "quitBtn": "Quit Game",
+
+  "pauseBtn": "Pause",
+  "muteBtn": "Sound",
+  "mutedBtn": "Sound",
+  "fullscreenBtn": "Fullscreen",
+
+  "statsTitle": "📊 Game Statistics",
+  "totalGames": "Total Games",
+  "bestScore": "Best Score",
+  "totalBricks": "Bricks Destroyed",
+
+  "launchInstruction": "Press SPACE or Click to Start",
+
+  "languageSelect": "Language:",
+  "themeSelect": "Theme:",
+  "themeClassic": "Classic",
+  "themeOcean": "Ocean",
+  "themeSunset": "Sunset",
+  "themeForest": "Forest"
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카운터 앱</title>
+    <link rel="stylesheet" href="counter.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔢 카운터 앱</h1>
+        
+        <div class="counter-display">
+            <span id="countValue">0</span>
+        </div>
+        
+        <div class="button-group">
+            <button id="decreaseBtn" class="btn btn-red">➖ 감소</button>
+            <button id="resetBtn" class="btn btn-gray">🔄 리셋</button>
+            <button id="increaseBtn" class="btn btn-green">➕ 증가</button>
+        </div>
+        
+        <div class="settings">
+            <label for="stepInput">증감값:</label>
+            <input type="number" id="stepInput" value="1" min="1" max="10">
+        </div>
+        
+        <div class="history">
+            <h3>📈 기록</h3>
+            <ul id="historyList"></ul>
+        </div>
+    </div>
+    
+    <script src="counter.js"></script>
+</body>
+</html>
