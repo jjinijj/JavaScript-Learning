@@ -46,5 +46,8 @@
   "themeClassic": "클래식",
   "themeOcean": "오션",
   "themeSunset": "선셋",
-  "themeForest": "포레스트"
+  "themeForest": "포레스트",
+
+  "bgmVolume": "🎵 배경음악:",
+  "sfxVolume": "🔊 효과음:"
 }

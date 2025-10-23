@@ -290,6 +290,9 @@ function updateLanguageUI() {
 
     // 특수한 경우: "레벨 X 완료!" 같은 동적 텍스트
     updateDynamicTexts();
+
+    // 음소거 버튼도 업데이트
+    updateMuteButton();
 }
 
 // 동적 텍스트 업데이트 (숫자가 포함된 텍스트)
@@ -358,7 +361,7 @@ function playBeep(frequency, duration, volume = VOLUME.SFX) {
 
         oscillator.start(now);
         oscillator.stop(now + duration);
-    } catch (error) {
+     } catch (error) {
         console.warn('사운드 재생 실패:', error);
     }
 }
@@ -414,87 +417,63 @@ function stopBGM() {
         bgmOscillator.stop();
         bgmOscillator = null;
         bgmGainNode = null;
-        isBGMPlaying = false;
-        console.log('🎵 BGM 정지');
     }
+
+    isBGMPlaying = false;
+    currentBGM = null;  // currentBGM 초기화
+    console.log('🎵 BGM 정지');
+}
+
+// BGM 재생 공통 함수
+function playBGM(type, notes, waveType, noteDuration, interval) {
+    if (isMuted || !audioContext || currentBGM === type) return;
+
+    stopBGM();
+    currentBGM = type;
+
+    console.log("play bgm : " + type);
+
+    let noteIndex = 0;
+
+    function playNextNote() {
+        // 음소거 또는 BGM 정지 체크
+        if (!isBGMPlaying || currentBGM !== type || isMuted) return;
+
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = notes[noteIndex];
+        oscillator.type = waveType;
+
+        gainNode.gain.setValueAtTime(VOLUME.BGM, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + noteDuration);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + noteDuration);
+
+        noteIndex = (noteIndex + 1) % notes.length;
+
+        setTimeout(playNextNote, interval);
+    }
+
+    isBGMPlaying = true;
+    playNextNote();
+    console.log(`🎵 ${type} BGM 재생`);
 }
 
 // 메뉴 BGM 재생 (차분한 멜로디)
 function playMenuBGM() {
-    if (isMuted || !audioContext || currentBGM === 'menu') return;
-
-    stopBGM();
-    currentBGM = 'menu';
-
-    // 간단한 루프 멜로디 (C - E - G - E 코드 패턴)
     const notes = [262, 330, 392, 330]; // C4, E4, G4, E4
-    let noteIndex = 0;
-
-    function playNextNote() {
-        if (!isBGMPlaying || currentBGM !== 'menu') return;
-
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.frequency.value = notes[noteIndex];
-        oscillator.type = 'sine';
-
-        gainNode.gain.setValueAtTime(VOLUME.BGM, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.4);
-
-        noteIndex = (noteIndex + 1) % notes.length;
-
-        setTimeout(playNextNote, 500);
-    }
-
-    isBGMPlaying = true;
-    playNextNote();
-    console.log('🎵 메뉴 BGM 재생');
+    playBGM('menu', notes, 'sine', 0.4, 500);
 }
 
 // 게임 플레이 BGM 재생 (빠른 비트)
 function playGameBGM() {
-    if (isMuted || !audioContext || currentBGM === 'game') return;
-
-    stopBGM();
-    currentBGM = 'game';
-
-    // 게임 플레이용 빠른 리듬 (D - A - D - A 패턴)
     const notes = [294, 440, 294, 440]; // D4, A4, D4, A4
-    let noteIndex = 0;
-
-    function playNextNote() {
-        if (!isBGMPlaying || currentBGM !== 'game') return;
-
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.frequency.value = notes[noteIndex];
-        oscillator.type = 'square';
-
-        gainNode.gain.setValueAtTime(VOLUME.BGM, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.2);
-
-        noteIndex = (noteIndex + 1) % notes.length;
-
-        setTimeout(playNextNote, 300);
-    }
-
-    isBGMPlaying = true;
-    playNextNote();
-    console.log('🎵 게임 BGM 재생');
+    playBGM('game', notes, 'square', 0.2, 300);
 }
 
 // ========================================
@@ -809,6 +788,13 @@ async function init() {
     loadVolume();
     updateVolumeUI();
 
+    // 음소거 상태 로드
+    const savedMuted = localStorage.getItem('brickBreakerMuted');
+    if (savedMuted !== null) {
+        isMuted = savedMuted === 'true';
+        updateMuteButton();
+    }
+
     // UI 버튼 이벤트 등록
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('pauseBtn').addEventListener('click', togglePause);
@@ -934,19 +920,36 @@ function setSFXVolume(value) {
 // 음소거 토글
 function toggleMute() {
     isMuted = !isMuted;
-    UI.muteBtn.textContent = isMuted ? '🔇 소리' : '🔊 소리';
 
-    // 음소거 시 BGM 정지, 해제 시 메뉴 BGM 재생
+    // 음소거 상태 LocalStorage에 저장
+    localStorage.setItem('brickBreakerMuted', isMuted);
+
+    // 버튼 텍스트 업데이트
+    updateMuteButton();
+
+    // 음소거 시 BGM 정지, 해제 시 적절한 BGM 재생
     if (isMuted) {
         stopBGM();
     } else {
-        // 게임이 진행 중이 아니면 메뉴 BGM 재생
-        if (!gameRunning) {
+        // 게임 상태에 따라 적절한 BGM 재생
+        if (gameRunning) {
+            // 게임 중이면 게임 BGM (일시정지 중에도 재생)
+            playGameBGM();
+        } else {
+            // 메뉴 화면이면 메뉴 BGM
             playMenuBGM();
         }
     }
 
     console.log('음소거:', isMuted);
+}
+
+// 음소거 버튼 텍스트 업데이트
+function updateMuteButton() {
+    if (!UI.muteBtn) return;
+
+    const icon = isMuted ? '🔇' : '🔊';
+    UI.muteBtn.textContent = `${icon} ${t('muteBtn')}`;
 }
 
 // 전체화면 토글
@@ -1067,7 +1070,8 @@ function showMenu() {
     UI.winScreen.classList.add('hidden');
     UI.startScreen.classList.remove('hidden');
 
-    // 메뉴 BGM 재생
+    // 기존 BGM 정지 후 메뉴 BGM 재생
+    stopBGM();
     playMenuBGM();
 
     console.log('메뉴로 이동');
@@ -1290,14 +1294,23 @@ function update() {
     ballY += ballSpeedY;
 
     // 좌우 벽 충돌
-    if (ballX + BALL.RADIUS > CANVAS.WIDTH || ballX - BALL.RADIUS < 0) {
-        ballSpeedX = -ballSpeedX;
+    if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
+        // 오른쪽 벽 충돌 - 위치 보정
+        ballX = CANVAS.WIDTH - BALL.RADIUS;
+        ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
+        playWallHitSound();
+    } else if (ballX - BALL.RADIUS < 0) {
+        // 왼쪽 벽 충돌 - 위치 보정
+        ballX = BALL.RADIUS;
+        ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
         playWallHitSound();
     }
 
     // 상단 벽 충돌
     if (ballY - BALL.RADIUS < 0) {
-        ballSpeedY = -ballSpeedY;
+        // 위치 보정
+        ballY = BALL.RADIUS;
+        ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
         playWallHitSound();
     }
 

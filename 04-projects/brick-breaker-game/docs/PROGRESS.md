@@ -544,26 +544,146 @@ function playNextNote() {
 ```
 
 **이슈 및 해결**:
-- **문제**: 효과음 반응이 100-200ms 지연됨
-- **원인**: Web Audio API 기본 버퍼 지연
-- **해결**: AudioContext 초기화 시 `latencyHint: 'interactive'` 옵션 추가
-- **결과**: 효과음이 즉각 반응하도록 개선 (게임용 저지연 모드)
+
+1. **효과음 지연 문제**
+   - **문제**: 효과음 반응이 100-200ms 지연됨
+   - **원인**: Web Audio API 기본 버퍼 지연
+   - **해결**: AudioContext 초기화 시 `latencyHint: 'interactive'` 옵션 추가
+   - **결과**: 효과음이 즉각 반응하도록 개선 (게임용 저지연 모드)
+
+2. **BGM 음소거가 안 되는 문제**
+   - **문제**: 음소거 버튼 클릭 시 BGM이 계속 재생됨
+   - **원인**: `playNextNote()` 함수 내부에서 `isMuted` 체크하지 않음
+   - **해결**:
+     ```javascript
+     function playNextNote() {
+         // 음소거 체크 추가
+         if (!isBGMPlaying || currentBGM !== type || isMuted) return;
+         // ...
+     }
+     ```
+   - **결과**: 음소거 시 BGM이 즉시 정지됨
+
+3. **음소거 해제 시 BGM이 재생되지 않는 문제**
+   - **문제**: 음소거 해제 시 배경음이 재생되지 않음
+   - **원인**: `stopBGM()`이 `currentBGM`을 초기화하지 않아서, `playMenuBGM()`이 `currentBGM === 'menu'` 조건에 걸림
+   - **해결**: `stopBGM()`에서 `currentBGM = null` 추가
+   - **결과**: 음소거 해제 시 적절한 BGM이 재생됨
+
+4. **일시정지 후 메뉴로 돌아갈 때 게임 BGM이 계속 재생**
+   - **문제**: 일시정지 후 메뉴로 돌아가도 게임 BGM이 계속 재생됨
+   - **원인**: `showMenu()` 함수에서 `stopBGM()`을 호출하지 않음
+   - **해결**: `showMenu()`에 `stopBGM()` 호출 추가
+   - **결과**: 메뉴로 돌아갈 때 메뉴 BGM으로 정상 전환
+
+5. **일시정지 중 음소거 해제 시 BGM이 재생되지 않음**
+   - **문제**: 일시정지 상태에서 음소거 해제 시 BGM이 재생되지 않음
+   - **원인**: `toggleMute()`의 조건 `gameRunning && !gamePaused`가 일시정지 상태를 차단
+   - **해결**: 조건을 `gameRunning`만 체크하도록 변경
+   - **결과**: 일시정지 중에도 음소거 해제 시 게임 BGM이 재생됨
+
+6. **BGM 코드 중복**
+   - **문제**: `playMenuBGM()`과 `playGameBGM()`이 거의 동일한 80줄 코드 중복
+   - **원인**: 리팩토링 되지 않은 초기 구현
+   - **해결**: 공통 함수 `playBGM(type, notes, waveType, noteDuration, interval)` 생성
+   - **결과**: 코드가 80줄에서 20줄로 감소, 유지보수성 향상
+
+7. **볼륨 라벨 로컬라이징 누락**
+   - **문제**: 볼륨 슬라이더 라벨이 하드코딩되어 언어 변경 시 업데이트되지 않음
+   - **원인**: `data-i18n` 속성 누락 및 번역 파일에 키 없음
+   - **해결**:
+     - `ko.json`에 `"bgmVolume": "🎵 배경음악:"`, `"sfxVolume": "🔊 효과음:"` 추가
+     - `en.json`에 `"bgmVolume": "🎵 BGM:"`, `"sfxVolume": "🔊 SFX:"` 추가
+     - HTML에 `data-i18n` 속성 추가
+   - **결과**: 언어 변경 시 볼륨 라벨도 자동 업데이트
+
+8. **음소거 버튼 상태 유지 문제**
+   - **문제**: 페이지 새로고침 후 음소거 상태가 초기화됨
+   - **원인**: 음소거 상태를 LocalStorage에 저장/로드하지 않음
+   - **해결**:
+     - `toggleMute()`에서 `localStorage.setItem('brickBreakerMuted', isMuted)` 추가
+     - `init()`에서 음소거 상태 로드 및 `updateMuteButton()` 호출
+   - **결과**: 페이지 새로고침 후에도 음소거 상태 유지
 
 **파일 변경**:
-- `index.html`: 볼륨 슬라이더 UI 추가
+- `index.html`: 볼륨 슬라이더 UI 추가, 라벨에 `data-i18n` 속성 추가
 - `style.css`: 볼륨 컨트롤 스타일 추가
+- `lang/ko.json`, `lang/en.json`: 볼륨 라벨 번역 추가
 - `game.js`:
-  - BGM 시스템 구현 (playMenuBGM, playGameBGM, stopBGM)
+  - BGM 시스템 구현 (playBGM, playMenuBGM, playGameBGM, stopBGM)
   - UI 클릭 사운드 추가 (playClickSound)
   - 볼륨 관리 함수 (saveVolume, loadVolume, setBGMVolume, setSFXVolume)
+  - 음소거 관리 함수 (toggleMute, updateMuteButton)
   - AudioContext 저지연 모드 설정
 
 **테스트 방법**:
 - 메뉴 화면에서 첫 클릭 시 BGM 자동 재생 확인
 - 게임 시작 시 게임 BGM으로 전환 확인
 - 볼륨 슬라이더로 BGM/효과음 개별 조절 확인
-- 모든 버튼과 설정 변경 시 클릭 사운드 확인
-- 효과음 지연이 없는지 확인 (벽돌 파괴, 패들 충돌)
+- 음소거 버튼으로 BGM/효과음 on/off 확인
+- 일시정지 후 메뉴로 돌아가기 시 메뉴 BGM 재생 확인
+- 언어 변경 시 볼륨 라벨 및 음소거 버튼 텍스트 업데이트 확인
+- 페이지 새로고침 후 음소거 상태 유지 확인
+
+---
+
+### 15단계: 게임플레이 버그 수정
+**상태**: ✅ 완료
+
+**구현 내용**:
+- [x] 공이 벽에 끼이는 버그 수정
+
+**이슈 및 해결**:
+
+1. **공이 벽에 끼이는 현상**
+   - **문제**: 공이 좌우 벽이나 상단 벽에 닿을 때 벽에 끼이거나 관통하는 현상 발생
+   - **원인**:
+     - 속도만 반전(`ballSpeedX = -ballSpeedX`)하고 공의 위치를 보정하지 않음
+     - 공이 벽을 관통한 상태에서 매 프레임마다 충돌 감지되어 속도가 계속 반전됨 (진동)
+     - 속도가 빠를 경우 한 프레임에 벽을 완전히 관통하여 벽 바깥에 위치하게 됨
+   - **기존 코드**:
+     ```javascript
+     // 문제가 있는 코드
+     if (ballX + BALL.RADIUS > CANVAS.WIDTH || ballX - BALL.RADIUS < 0) {
+         ballSpeedX = -ballSpeedX;  // 단순 반전 → 벽 안에서 진동
+     }
+     ```
+   - **해결**:
+     ```javascript
+     // 수정된 코드
+     if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
+         // 오른쪽 벽 충돌 - 위치 보정
+         ballX = CANVAS.WIDTH - BALL.RADIUS;
+         ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
+         playWallHitSound();
+     } else if (ballX - BALL.RADIUS < 0) {
+         // 왼쪽 벽 충돌 - 위치 보정
+         ballX = BALL.RADIUS;
+         ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
+         playWallHitSound();
+     }
+
+     // 상단 벽 충돌
+     if (ballY - BALL.RADIUS < 0) {
+         // 위치 보정
+         ballY = BALL.RADIUS;
+         ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
+         playWallHitSound();
+     }
+     ```
+   - **개선 사항**:
+     1. **위치 보정**: 공이 벽을 관통했을 때 벽 경계로 위치 되돌리기
+     2. **절대값 사용**: `Math.abs()`로 속도 방향을 명확하게 설정
+     3. **조건 분리**: `if-else if`로 한 프레임에 한 번만 처리
+   - **결과**: 공이 벽에 끼이지 않고 부드럽게 반사됨
+
+**파일 변경**:
+- `game.js`: 벽 충돌 감지 로직 개선 (1296-1315번 줄)
+
+**테스트 방법**:
+- 게임 시작 후 공이 좌우 벽에 부딪힐 때 끼이지 않는지 확인
+- 공이 상단 벽에 부딪힐 때 끼이지 않는지 확인
+- 난이도 '어려움'으로 공 속도가 빠를 때도 정상 작동하는지 확인
 
 ---
 
@@ -574,7 +694,8 @@ function playNextNote() {
 - [x] 11단계: 아이템 시스템 (파워업) 완료
 - [x] 12단계: 입자 효과 시스템 완료
 - [x] 13단계: 효과음 시스템 완료
-- [x] 14단계: 배경 음악 및 UI 사운드 완료
+- [x] 14단계: 배경 음악 및 UI 사운드 완료 (8개 이슈 해결)
+- [x] 15단계: 게임플레이 버그 수정 완료 (공 벽 끼임 현상)
 - [x] 레벨 시스템 제거 (벽돌 클리어 = 게임 승리)
 - [ ] 선택 사항: 모바일 터치 컨트롤
 

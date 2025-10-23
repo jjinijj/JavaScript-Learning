@@ -46,5 +46,8 @@
   "themeClassic": "Classic",
   "themeOcean": "Ocean",
   "themeSunset": "Sunset",
-  "themeForest": "Forest"
+  "themeForest": "Forest",
+
+  "bgmVolume": "🎵 BGM:",
+  "sfxVolume": "🔊 SFX:"
 }
