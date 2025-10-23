@@ -420,15 +420,162 @@ HTML5 Canvas를 사용한 벽돌깨기 게임 개발
 
 ---
 
+### 12단계: 입자 효과 시스템
+**상태**: ✅ 완료
+
+**목표**:
+- 벽돌 파괴 시 파편 입자 효과
+- 중력과 페이드 아웃 효과
+
+**구현 내용**:
+- [x] 입자 상수 정의 (PARTICLE 객체)
+  - COUNT: 8개 (벽돌당)
+  - SIZE: 4px
+  - SPEED: 3 (초기 속도)
+  - GRAVITY: 0.2 (중력 가속도)
+  - LIFETIME: 60 프레임
+- [x] particles 배열
+- [x] createParticles(x, y, color) - 벽돌 파괴 시 8개 입자 생성
+  - 360도 균등 분포로 사방으로 퍼짐
+  - 랜덤 속도와 크기 변화
+- [x] updateParticles() - 입자 물리 업데이트
+  - 위치 이동 (속도 적용)
+  - 중력 효과 (아래로 가속)
+  - 생명 주기 관리
+- [x] drawParticles() - 입자 렌더링
+  - 시간에 따라 투명도 감소 (fade out)
+  - 벽돌 색상 유지
+- [x] 게임 루프 통합
+  - update()에 updateParticles() 추가
+  - draw()에 drawParticles() 추가
+- [x] resetItems()에 particles 초기화 추가
+
+**테스트 방법**:
+- 벽돌 파괴 시 파편이 사방으로 튀어나가는지 확인
+- 입자가 중력에 따라 아래로 떨어지는지 확인
+- 입자가 점점 투명해지면서 사라지는지 확인
+
+---
+
+### 13단계: 효과음 시스템
+**상태**: ✅ 완료
+
+**목표**:
+- Web Audio API를 사용한 효과음 추가
+- 모든 게임 이벤트에 사운드 적용
+
+**구현 내용**:
+- [x] 사운드 시스템 변수
+  - audioContext: Web Audio API 컨텍스트
+  - isMuted: 음소거 상태 (기존 변수 재배치)
+- [x] 사운드 생성 함수들
+  - initAudio(): AudioContext 초기화
+  - playBeep(frequency, duration, volume): 기본 비프 사운드 생성
+    - Oscillator (발진기): square wave 사용
+    - GainNode: 볼륨 조절 및 페이드 아웃
+- [x] 이벤트별 사운드 함수
+  - playBrickBreakSound(): 800Hz, 0.1초 - 벽돌 파괴
+  - playPaddleHitSound(): 300Hz, 0.1초 - 패들 충돌
+  - playWallHitSound(): 200Hz, 0.05초 - 벽 충돌
+  - playLifeLostSound(): 150Hz, 0.3초 - 생명 손실
+  - playGameOverSound(): 하강하는 3음 (400→300→200Hz)
+  - playWinSound(): 상승하는 3음 (400→500→600Hz)
+- [x] 게임 이벤트에 사운드 통합
+  - 벽돌 파괴 시
+  - 좌우/상단 벽 충돌 시
+  - 패들 충돌 시
+  - 생명 손실 시
+  - 게임 오버 시
+  - 게임 승리 시
+- [x] 게임 시작 시 AudioContext 초기화
+
+**테스트 방법**:
+- 음소거 버튼으로 사운드 on/off 확인
+- 각 이벤트마다 적절한 효과음이 재생되는지 확인
+- 여러 소리가 동시에 재생될 때 정상 작동하는지 확인
+
+---
+
+### 14단계: 배경 음악 및 UI 사운드 시스템
+**상태**: ✅ 완료
+
+**구현 내용**:
+- [x] 볼륨 상수 분리 (BGM: 0.1, SFX: 0.2)
+- [x] UI 클릭 효과음 추가
+  - playClickSound(): 600Hz, 0.03초
+  - 버튼 클릭 시 자동 재생 (게임 시작, 재시작, 메뉴, 설정 변경)
+- [x] 배경 음악 시스템 구현
+  - playMenuBGM(): C-E-G-E 패턴, Sine wave, 0.5초 간격
+  - playGameBGM(): D-A-D-A 패턴, Square wave, 0.3초 간격
+  - stopBGM(): BGM 정지 함수
+- [x] 게임 상태별 자동 BGM 전환
+  - 메뉴 화면: 차분한 멜로디
+  - 게임 플레이: 빠른 리듬
+  - 게임 오버/승리: BGM 정지
+- [x] 볼륨 조절 UI 추가
+  - BGM 볼륨 슬라이더 (0-100%, 기본 10%)
+  - 효과음 볼륨 슬라이더 (0-100%, 기본 20%)
+  - LocalStorage에 볼륨 설정 자동 저장
+- [x] 음소거 기능 개선
+  - 음소거 시 BGM 자동 정지
+  - 음소거 해제 시 적절한 BGM 재개
+
+**기술 구현**:
+```javascript
+// AudioContext 저지연 모드 초기화
+audioContext = new AudioContext({
+    latencyHint: 'interactive',  // 게임용 최소 지연
+    sampleRate: 44100
+});
+
+// 볼륨 설정
+let VOLUME = {
+    BGM: 0.1,   // 배경음악
+    SFX: 0.2    // 효과음
+};
+
+// BGM 재생 (루프 방식)
+function playNextNote() {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    // ... 음악 재생 로직
+    setTimeout(playNextNote, interval);
+}
+```
+
+**이슈 및 해결**:
+- **문제**: 효과음 반응이 100-200ms 지연됨
+- **원인**: Web Audio API 기본 버퍼 지연
+- **해결**: AudioContext 초기화 시 `latencyHint: 'interactive'` 옵션 추가
+- **결과**: 효과음이 즉각 반응하도록 개선 (게임용 저지연 모드)
+
+**파일 변경**:
+- `index.html`: 볼륨 슬라이더 UI 추가
+- `style.css`: 볼륨 컨트롤 스타일 추가
+- `game.js`:
+  - BGM 시스템 구현 (playMenuBGM, playGameBGM, stopBGM)
+  - UI 클릭 사운드 추가 (playClickSound)
+  - 볼륨 관리 함수 (saveVolume, loadVolume, setBGMVolume, setSFXVolume)
+  - AudioContext 저지연 모드 설정
+
+**테스트 방법**:
+- 메뉴 화면에서 첫 클릭 시 BGM 자동 재생 확인
+- 게임 시작 시 게임 BGM으로 전환 확인
+- 볼륨 슬라이더로 BGM/효과음 개별 조절 확인
+- 모든 버튼과 설정 변경 시 클릭 사운드 확인
+- 효과음 지연이 없는지 확인 (벽돌 파괴, 패들 충돌)
+
+---
+
 ## 다음 할 일
 - [x] 8단계: 난이도 시스템 및 추가 기능 완료
 - [x] 9단계: 로컬라이징 (다국어 지원) 완료
 - [x] 10단계: UI 개선 및 테마 시스템 완료
 - [x] 11단계: 아이템 시스템 (파워업) 완료
+- [x] 12단계: 입자 효과 시스템 완료
+- [x] 13단계: 효과음 시스템 완료
+- [x] 14단계: 배경 음악 및 UI 사운드 완료
 - [x] 레벨 시스템 제거 (벽돌 클리어 = 게임 승리)
-- [ ] 선택 사항: 효과음 추가 (벽돌 파괴, 패들 충돌 등)
-- [ ] 선택 사항: 배경 음악
-- [ ] 선택 사항: 입자 효과 (벽돌 파괴 시 파편)
 - [ ] 선택 사항: 모바일 터치 컨트롤
 
 ## ⚠️ 프로젝트 완성 시 재검토 사항
