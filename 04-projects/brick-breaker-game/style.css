@@ -467,3 +467,49 @@ body {
 .overlay * {
     cursor: default;
 }
+
+/* ========================================
+   생명력 애니메이션
+   ======================================== */
+
+/* 생명 획득 애니메이션 */
+@keyframes life-gain-pulse {
+    0%, 100% {
+        transform: scale(1);
+        color: inherit;
+    }
+    50% {
+        transform: scale(1.3);
+        color: #00ff00;
+        text-shadow: 0 0 10px #00ff00;
+    }
+}
+
+.life-gain {
+    animation: life-gain-pulse 0.3s ease-in-out 3;
+}
+
+/* 생명 소실 애니메이션 */
+@keyframes life-loss-shake {
+    0%, 100% {
+        transform: translate(0, 0) scale(1);
+        color: inherit;
+    }
+    25% {
+        transform: translate(-5px, 2px) scale(1.2);
+        color: #ff0000;
+    }
+    50% {
+        transform: translate(5px, -2px) scale(1.3);
+        color: #ff0000;
+        text-shadow: 0 0 15px #ff0000;
+    }
+    75% {
+        transform: translate(-3px, 1px) scale(1.2);
+        color: #ff0000;
+    }
+}
+
+.life-loss {
+    animation: life-loss-shake 0.3s ease-in-out 3;
+}
