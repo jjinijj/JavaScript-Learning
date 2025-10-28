@@ -310,7 +310,7 @@ function t(key) {
 // JSON 파일에서 언어 로드
 async function loadLanguage(lang) {
     try {
-        const response = await fetch(`lang/${lang}.json`);
+        const response = await fetch(`../lang/${lang}.json`);
         if (!response.ok) {
             throw new Error(`Failed to load language: ${lang}`);
         }
