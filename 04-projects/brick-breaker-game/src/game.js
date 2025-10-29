@@ -59,6 +59,28 @@ import {
     setupInputHandlers
 } from './input.js';
 
+import {
+    particles,
+    brickFragments,
+    ballTrail,
+    scorePopups,
+    paddleHitWaves,
+    createParticles,
+    updateParticles,
+    drawParticles,
+    createBrickFragments,
+    updateBrickFragments,
+    drawBrickFragments,
+    updateBallTrail,
+    drawBallTrail,
+    createScorePopup,
+    updateScorePopups,
+    drawScorePopups,
+    createPaddleHitWave,
+    updatePaddleHitWaves,
+    drawPaddleHitWaves
+} from './animations.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -81,15 +103,6 @@ let bricks = [];
 
 // 아이템 배열
 let items = [];
-
-// 입자 배열
-let particles = [];
-
-// 애니메이션 배열
-let brickFragments = [];        // 벽돌 조각
-let ballTrail = [];             // 공 트레일
-let scorePopups = [];           // 점수 팝업
-let paddleHitWaves = [];        // 패들 히트 파동
 let paddleAnimation = null;     // 패들 애니메이션
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
