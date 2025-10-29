@@ -9,7 +9,6 @@ import {
     BRICK,
     GAME,
     ITEM,
-    ITEM_TYPES,
     ANIMATION,
     DIFFICULTY_SETTINGS
 } from './constants.js';
@@ -76,6 +75,15 @@ import {
     drawPaddleHitWaves
 } from './animations.js';
 
+import {
+    items,
+    createItem,
+    updateItems as updateItemsModule,
+    updateItemAnimations,
+    drawAnimatedItems,
+    resetItems as resetItemsModule
+} from './items.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -96,8 +104,7 @@ let paddleX;
 // 벽돌 관련 변수
 let bricks = [];
 
-// 아이템 배열
-let items = [];
+// 애니메이션 상태 변수
 let paddleAnimation = null;     // 패들 애니메이션
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
@@ -148,58 +155,7 @@ const UI = {};
 // ========================================
 
 // 아이템 생성
-function createItem(x, y) {
-    // 랜덤하게 아이템 타입 선택
-    const typeKeys = Object.keys(ITEM_TYPES);
-    const randomType = ITEM_TYPES[typeKeys[Math.floor(Math.random() * typeKeys.length)]];
-
-    items.push({
-        x: x,
-        y: y,
-        type: randomType,
-        width: ITEM.SIZE,
-        height: ITEM.SIZE
-    });
-
-    console.log('🎁 아이템 생성:', randomType.emoji, 'at', x, y);
-}
-
-// 아이템 업데이트 (이동)
-function updateItems() {
-    for (let i = items.length - 1; i >= 0; i--) {
-        const item = items[i];
-
-        // 아이템 낙하
-        item.y += ITEM.SPEED;
-
-        // 화면 밖으로 나가면 제거
-        if (item.y > CANVAS.HEIGHT) {
-            items.splice(i, 1);
-            continue;
-        }
-
-        // 패들과 충돌 검사
-        const paddleWidth = getPaddleWidth();
-        const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-
-        if (checkRectCollision(
-            item.x, item.y, item.width, item.height,
-            paddleX, paddleY, paddleWidth, PADDLE.HEIGHT
-        )) {
-            // 아이템 효과 적용
-            applyItemEffect(item.type);
-            items.splice(i, 1);
-        }
-    }
-}
-
-// 사각형-사각형 충돌 검사
-function checkRectCollision(x1, y1, w1, h1, x2, y2, w2, h2) {
-    return x1 < x2 + w2 &&
-           x1 + w1 > x2 &&
-           y1 < y2 + h2 &&
-           y1 + h1 > y2;
-}
+// 아이템 관련 함수 (items.js에서 import)
 
 // 아이템 효과 적용
 function applyItemEffect(itemType) {
@@ -349,75 +305,7 @@ function getPaddleWidth() {
 
 // 공 트레일 효과 (animations.js에서 import)
 
-// ========================================
-// 애니메이션 함수 - 3. 파워업 아이템 애니메이션 (회전/반짝임)
-// ========================================
-
-// 아이템 애니메이션 업데이트
-function updateItemAnimations() {
-    const currentTime = Date.now();
-
-    items.forEach(item => {
-        // 회전 애니메이션 (시간에 따라 회전)
-        if (!item.rotation) item.rotation = 0;
-        item.rotation += 0.05; // 회전 속도
-
-        // 반짝임 애니메이션 (사인파로 크기 변화)
-        if (!item.spawnTime) item.spawnTime = currentTime;
-        const elapsed = (currentTime - item.spawnTime) / 1000; // 초 단위
-        item.pulseScale = 1 + Math.sin(elapsed * 4) * 0.15; // 0.85 ~ 1.15 크기 변화
-
-        // 발광 효과 (사인파로 투명도 변화)
-        item.glowAlpha = 0.3 + Math.sin(elapsed * 3) * 0.3; // 0 ~ 0.6
-    });
-}
-
-// 아이템 그리기 (애니메이션 적용)
-function drawAnimatedItems() {
-    items.forEach(item => {
-        const centerX = item.x + item.width / 2;
-        const centerY = item.y + item.height / 2;
-        const scale = item.pulseScale || 1;
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-
-        // 발광 효과 (외곽선)
-        if (item.glowAlpha) {
-            ctx.globalAlpha = item.glowAlpha;
-            ctx.fillStyle = item.type.color;
-            const glowSize = (item.width * scale) * 1.3;
-            ctx.fillRect(-glowSize / 2, -glowSize / 2, glowSize, glowSize);
-        }
-
-        // 회전 적용
-        ctx.rotate(item.rotation || 0);
-
-        // 크기 변화 적용
-        ctx.scale(scale, scale);
-
-        // 아이템 배경
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = item.type.color;
-        ctx.fillRect(-item.width / 2, -item.height / 2, item.width, item.height);
-
-        // 테두리 (반짝임 효과)
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = item.glowAlpha || 0.5;
-        ctx.strokeRect(-item.width / 2, -item.height / 2, item.width, item.height);
-
-        // 이모지 (회전 취소하고 그리기)
-        ctx.rotate(-(item.rotation || 0));
-        ctx.globalAlpha = 1;
-        ctx.font = '16px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(item.type.emoji, 0, 0);
-
-        ctx.restore();
-    });
-}
+// 아이템 애니메이션 함수 (items.js에서 import)
 
 // 점수 팝업 애니메이션 (animations.js에서 import)
 
@@ -985,7 +873,7 @@ function toggleFullscreen() {
 
 // 아이템 및 효과 초기화
 function resetItems() {
-    items = [];
+    resetItemsModule();  // 아이템 배열 초기화
     resetAnimations();  // 애니메이션 배열 초기화
     paddleAnimation = null;
     lifeAnimation = null;
@@ -1408,7 +1296,7 @@ function update() {
     collisionDetection();
 
     // 아이템 업데이트
-    updateItems();
+    updateItemsModule(paddleX, getPaddleWidth, applyItemEffect);
 
     // 아이템 애니메이션 업데이트
     updateItemAnimations();
@@ -1447,7 +1335,7 @@ function draw() {
     drawBricks();
 
     // 아이템 그리기 (애니메이션 적용)
-    drawAnimatedItems();
+    drawAnimatedItems(ctx);
 
     // 입자 그리기
     drawParticles(ctx);
