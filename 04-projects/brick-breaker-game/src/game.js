@@ -53,6 +53,12 @@ import {
     getStats
 } from './stats.js';
 
+import {
+    isRightPressed,
+    isLeftPressed,
+    setupInputHandlers
+} from './input.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -69,8 +75,6 @@ let ballSpeedY;
 
 // 패들 관련 변수
 let paddleX;
-let rightPressed = false;
-let leftPressed = false;
 
 // 벽돌 관련 변수
 let bricks = [];
@@ -1071,11 +1075,33 @@ async function init() {
     lives = 3;
     updateDisplay();
 
-    // 이벤트 리스너 등록
-    document.addEventListener('keydown', keyDownHandler);
-    document.addEventListener('keyup', keyUpHandler);
-    canvas.addEventListener('mousemove', mouseMoveHandler);
-    canvas.addEventListener('click', mouseClickHandler);
+    // 입력 이벤트 핸들러 설정
+    setupInputHandlers(canvas, {
+        onSpacePress: () => {
+            if (!ballLaunched) {
+                ballLaunched = true;
+                console.log('공 발사!');
+            }
+        },
+        onPausePress: () => {
+            if (gameRunning) {
+                togglePause();
+            }
+        },
+        onMouseMove: (e) => {
+            const paddleWidth = getAnimatedPaddleWidth();
+            const relativeX = e.clientX - canvas.offsetLeft;
+            if (relativeX > paddleWidth / 2 && relativeX < CANVAS.WIDTH - paddleWidth / 2) {
+                paddleX = relativeX - paddleWidth / 2;
+            }
+        },
+        onMouseClick: () => {
+            if (!ballLaunched) {
+                ballLaunched = true;
+                console.log('공 발사!');
+            }
+        }
+    });
 
     // 통계 로드
     loadStats();
@@ -1391,53 +1417,6 @@ function gameWin() {
     console.log('게임 승리! 최종 점수:', score);
 }
 
-// 키보드 누름 이벤트
-function keyDownHandler(e) {
-    if (e.key === 'Right' || e.key === 'ArrowRight') {
-        rightPressed = true;
-    } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
-        leftPressed = true;
-    } else if (e.key === ' ' || e.key === 'Spacebar') {
-        // 스페이스바로 공 발사
-        if (!ballLaunched) {
-            ballLaunched = true;
-            console.log('공 발사!');
-        }
-    } else if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
-        // ESC 또는 P 키로 일시정지/재개
-        if (gameRunning) {
-            togglePause();
-        }
-    }
-}
-
-// 키보드 뗌 이벤트
-function keyUpHandler(e) {
-    if (e.key === 'Right' || e.key === 'ArrowRight') {
-        rightPressed = false;
-    } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
-        leftPressed = false;
-    }
-}
-
-// 마우스 이동 이벤트
-function mouseMoveHandler(e) {
-    const paddleWidth = getAnimatedPaddleWidth(); // 애니메이션 적용된 패들 너비
-    const relativeX = e.clientX - canvas.offsetLeft;
-    if (relativeX > paddleWidth / 2 && relativeX < CANVAS.WIDTH - paddleWidth / 2) {
-        paddleX = relativeX - paddleWidth / 2;
-    }
-}
-
-// 마우스 클릭 이벤트
-function mouseClickHandler() {
-    // 클릭으로 공 발사
-    if (!ballLaunched) {
-        ballLaunched = true;
-        console.log('공 발사!');
-    }
-}
-
 // 공 위치 초기화
 function resetBall() {
     const settings = DIFFICULTY_SETTINGS[difficulty];
@@ -1685,9 +1664,9 @@ function update() {
     }
 
     // 패들 이동 (키보드)
-    if (rightPressed && paddleX < CANVAS.WIDTH - paddleWidth) {
+    if (isRightPressed() && paddleX < CANVAS.WIDTH - paddleWidth) {
         paddleX += PADDLE.SPEED;
-    } else if (leftPressed && paddleX > 0) {
+    } else if (isLeftPressed() && paddleX > 0) {
         paddleX -= PADDLE.SPEED;
     }
 
