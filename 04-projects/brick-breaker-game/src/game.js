@@ -84,6 +84,14 @@ import {
     resetItems as resetItemsModule
 } from './items.js';
 
+import {
+    bricks,
+    initBricks,
+    drawBricks,
+    checkAllBricksCleared,
+    getBrick
+} from './bricks.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -100,9 +108,6 @@ let ballSpeedY;
 
 // 패들 관련 변수
 let paddleX;
-
-// 벽돌 관련 변수
-let bricks = [];
 
 // 애니메이션 상태 변수
 let paddleAnimation = null;     // 패들 애니메이션
@@ -694,7 +699,7 @@ async function init() {
     resetPaddle();
 
     // 벽돌 초기화
-    initBricks();
+    initBricks(difficulty);
 
     // 점수 및 생명 초기화
     score = 0;
@@ -918,7 +923,7 @@ function startGame() {
     updateDisplay();
 
     // 난이도에 따라 초기화
-    initBricks();
+    initBricks(difficulty);
     resetBall();
     resetPaddle();
     resetItems();
@@ -970,7 +975,7 @@ function restartGame() {
     // 게임 요소 리셋
     resetBall();
     resetPaddle();
-    initBricks();
+    initBricks(difficulty);
 
     // 게임 시작
     gameRunning = true;
@@ -1058,22 +1063,7 @@ function resetPaddle() {
     console.log('패들 초기화:', paddleX, '너비:', settings.paddleWidth);
 }
 
-// 벽돌 배열 초기화
-function initBricks() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    bricks = [];
-    for (let c = 0; c < BRICK.COLS; c++) {
-        bricks[c] = [];
-        for (let r = 0; r < settings.brickRows; r++) {
-            bricks[c][r] = {
-                x: 0,
-                y: 0,
-                status: 1  // 1: 존재, 0: 파괴됨
-            };
-        }
-    }
-    console.log('벽돌 초기화:', settings.brickRows, 'x', BRICK.COLS, '(난이도:', difficulty + ')');
-}
+// 벽돌 관련 함수 (bricks.js에서 import)
 
 // ========================================
 // 5단계: 충돌 감지 유틸리티 함수
@@ -1140,7 +1130,7 @@ function collisionDetection() {
                     }
 
                     // 게임 승리 확인 (모든 벽돌 파괴)
-                    if (checkAllBricksCleared()) {
+                    if (checkAllBricksCleared(difficulty)) {
                         gameWin();
                     }
                 }
@@ -1149,18 +1139,7 @@ function collisionDetection() {
     }
 }
 
-// 모든 벽돌 파괴 확인
-function checkAllBricksCleared() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    for (let c = 0; c < BRICK.COLS; c++) {
-        for (let r = 0; r < settings.brickRows; r++) {
-            if (bricks[c][r].status === 1) {
-                return false; // 아직 벽돌이 남아있음
-            }
-        }
-    }
-    return true; // 모든 벽돌 파괴
-}
+// checkAllBricksCleared (bricks.js에서 import)
 
 
 // 화면 표시 업데이트
@@ -1332,7 +1311,7 @@ function draw() {
     ctx.fillRect(0, 0, CANVAS.WIDTH, CANVAS.HEIGHT);
 
     // 벽돌 그리기
-    drawBricks();
+    drawBricks(ctx, difficulty);
 
     // 아이템 그리기 (애니메이션 적용)
     drawAnimatedItems(ctx);
@@ -1398,29 +1377,7 @@ function drawPaddle() {
 }
 
 // 벽돌 그리기
-function drawBricks() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    for (let c = 0; c < BRICK.COLS; c++) {
-        for (let r = 0; r < settings.brickRows; r++) {
-            if (bricks[c][r].status === 1) {
-                // 벽돌 위치 계산
-                const brickX = c * (BRICK.WIDTH + BRICK.PADDING) + BRICK.OFFSET_LEFT;
-                const brickY = r * (BRICK.HEIGHT + BRICK.PADDING) + BRICK.OFFSET_TOP;
-
-                // 벽돌 위치 저장
-                bricks[c][r].x = brickX;
-                bricks[c][r].y = brickY;
-
-                // 벽돌 그리기
-                ctx.beginPath();
-                ctx.roundRect(brickX, brickY, BRICK.WIDTH, BRICK.HEIGHT, 4);
-                ctx.fillStyle = COLORS.BRICK_COLORS[r % COLORS.BRICK_COLORS.length];
-                ctx.fill();
-                ctx.closePath();
-            }
-        }
-    }
-}
+// drawBricks (bricks.js에서 import)
 
 // 게임 루프
 function gameLoop() {
