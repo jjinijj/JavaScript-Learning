@@ -384,6 +384,31 @@ HTML5 Canvas를 사용한 벽돌깨기 게임 개발
     - 공 속도: ballSpeedX/Y에 배율 적용, setTimeout 후 원래 속도로 명시적 복원 필요
     - 생명: 즉시 lives++ 적용
 
+### 2025-10-29
+- **Stage 17 시작**: 코드 리팩토링 (모듈 분리)
+  - 목표: 2200줄 game.js를 기능별 모듈로 분리
+  - ES6 모듈 시스템 도입 (`type="module"`)
+- **모듈 추출 완료** (9/10):
+  1. constants.js (175 lines) - 모든 게임 상수 정의
+  2. audio.js (232 lines) - Web Audio API, BGM, 효과음, 볼륨 관리
+  3. i18n.js (80 lines) - 다국어 지원 시스템
+  4. theme.js (27 lines) - 4가지 컬러 테마 시스템
+  5. stats.js (60 lines) - 게임 통계 관리
+  6. input.js (68 lines) - 키보드/마우스 입력 처리 (콜백 패턴)
+  7. animations.js (269 lines) - 모든 애니메이션 효과
+  8. items.js (155 lines) - 아이템 시스템 (콜백 패턴)
+  9. bricks.js (106 lines) - 벽돌 생성/그리기/상태 관리
+- **game.js 크기 변화**: 2200 lines → 1250 lines (43% 감소)
+- **해결한 기술 이슈**:
+  - ES6 모듈 readonly 변수 문제 (setMuted 함수 사용)
+  - UTF-8 인코딩 반복 문제 (8개 파일 재작성)
+  - 애니메이션 배열 재할당 에러 (.length = 0 사용)
+  - ctx 매개변수 누락 (모든 draw 함수에 전달)
+- **Git 작업**: 10개 커밋 푸시 완료 (브랜치: refactor/stage-17-module-separation)
+- **남은 작업**: physics.js 추출, PR 생성 및 병합
+
+---
+
 ### 11단계: 아이템 시스템 (파워업)
 **상태**: ✅ 완료
 
@@ -688,7 +713,7 @@ function playNextNote() {
 ---
 
 ### 16단계: 애니메이션 시스템
-**상태**: 🔄 진행 중
+**상태**: ✅ 완료
 
 **목표**:
 - 게임 내 다양한 시각적 애니메이션 효과 추가
@@ -804,6 +829,160 @@ let paddleHitWaves = [];
 
 ---
 
+### 17단계: 코드 리팩토링 (모듈 분리)
+**상태**: 🔄 진행 중
+
+**목표**:
+- 2200줄의 monolithic game.js를 기능별 모듈로 분리
+- ES6 모듈 시스템 사용
+- 코드 유지보수성 향상
+- 단일 책임 원칙 적용
+
+**구현 내용**:
+- [x] **constants.js** (175 lines) - 게임 상수 정의
+  - CANVAS, COLORS, BALL, PADDLE, BRICK 상수
+  - GAME, ITEM, ITEM_TYPES, PARTICLE 상수
+  - ANIMATION, DIFFICULTY_SETTINGS 상수
+- [x] **audio.js** (232 lines) - 오디오 시스템
+  - Web Audio API 관리
+  - BGM 시스템 (playMenuBGM, playGameBGM, stopBGM)
+  - 효과음 시스템 (playBrickBreakSound 등)
+  - 볼륨 관리 (setBGMVolume, setSFXVolume, loadVolume)
+  - 음소거 관리 (toggleMute, setMuted, getMuted)
+- [x] **i18n.js** (80 lines) - 다국어 지원 시스템
+  - 번역 파일 로드 (loadLanguage)
+  - 번역 텍스트 가져오기 (t 함수)
+  - 언어 전환 (setLanguage)
+  - UI 자동 업데이트 (updateLanguageUI)
+- [x] **theme.js** (27 lines) - 테마 시스템
+  - 테마 전환 (setTheme)
+  - LocalStorage 저장/로드
+  - 4가지 테마: Classic, Ocean, Sunset, Forest
+- [x] **stats.js** (60 lines) - 통계 관리
+  - 게임 통계 저장/로드 (saveStats, loadStats)
+  - 통계 업데이트 (updateStats)
+  - 통계 UI 표시 (updateStatsDisplay)
+- [x] **input.js** (68 lines) - 입력 처리
+  - 키보드 이벤트 (방향키, 스페이스바, ESC)
+  - 마우스 이벤트 (이동, 클릭)
+  - 콜백 패턴으로 게임 로직 분리
+- [x] **animations.js** (269 lines) - 애니메이션 시스템
+  - 입자 시스템 (createParticles, updateParticles, drawParticles)
+  - 벽돌 조각 (createBrickFragments, updateBrickFragments, drawBrickFragments)
+  - 공 트레일 (updateBallTrail, drawBallTrail)
+  - 점수 팝업 (createScorePopup, updateScorePopups, drawScorePopups)
+  - 패들 히트 파동 (createPaddleHitWave, updatePaddleHitWaves, drawPaddleHitWaves)
+  - 애니메이션 초기화 (resetAnimations)
+- [x] **items.js** (155 lines) - 아이템 시스템
+  - 아이템 생성 (createItem)
+  - 아이템 업데이트 및 충돌 감지 (updateItems)
+  - 아이템 애니메이션 (updateItemAnimations, drawAnimatedItems)
+  - 콜백 패턴으로 패들 너비 및 효과 적용 분리
+- [x] **bricks.js** (106 lines) - 벽돌 시스템
+  - 벽돌 초기화 (initBricks)
+  - 벽돌 그리기 (drawBricks)
+  - 벽돌 상태 확인 (checkAllBricksCleared)
+  - 벽돌 유틸리티 (getBrick, destroyBrick)
+- [ ] **physics.js** (예정) - 물리/충돌 감지
+  - 충돌 감지 함수들
+  - 공-벽 충돌
+  - 공-패들 충돌
+  - 공-벽돌 충돌
+
+**모듈 구조**:
+```
+src/
+├── constants.js       # 게임 상수
+├── audio.js          # 오디오 시스템
+├── i18n.js           # 다국어 지원
+├── theme.js          # 테마 시스템
+├── stats.js          # 통계 관리
+├── input.js          # 입력 처리
+├── animations.js     # 애니메이션
+├── items.js          # 아이템 시스템
+├── bricks.js         # 벽돌 시스템
+├── physics.js        # (예정) 물리/충돌
+└── game.js           # 메인 게임 로직 (1250 lines)
+```
+
+**코드 크기 변화**:
+- 시작: game.js ~2200 lines
+- 현재: game.js ~1250 lines + 9개 모듈 (~1172 lines)
+- 감소: ~950 lines (43% 감소)
+
+**이슈 및 해결**:
+
+1. **오디오 모듈 추출 시 isMuted 변수 접근 문제**
+   - **문제**: game.js에서 audio.js의 `isMuted` 변수를 직접 재할당 시도
+   - **원인**: ES6 모듈에서 export된 변수는 readonly
+   - **해결**: `setMuted()` 함수 사용으로 변경
+   ```javascript
+   // Before
+   isMuted = savedMuted === 'true';
+
+   // After
+   setMuted(savedMuted === 'true');
+   ```
+
+2. **UTF-8 인코딩 문제 (반복 발생)**
+   - **문제**: macOS에서 Write 도구로 파일 생성 시 한글이 깨짐
+   - **원인**: 기본 인코딩이 UTF-8이 아님
+   - **해결**: 파일 생성 후 Read로 확인, 깨졌으면 다시 Write
+   - **영향받은 파일**: constants.js, ui.js, i18n.js, theme.js, stats.js, input.js, animations.js, items.js
+   - **프로세스**: Write → Read (확인) → Write (재작성)
+
+3. **애니메이션 모듈 readonly 속성 에러**
+   - **문제**: `resetAnimations()`에서 export된 배열 재할당 시도
+   - **해결**: 배열 재할당 대신 `.length = 0` 사용
+   ```javascript
+   // Before
+   export function resetAnimations() {
+       particles = [];  // Error!
+   }
+
+   // After
+   export function resetAnimations() {
+       particles.length = 0;  // OK
+   }
+   ```
+
+4. **ctx 매개변수 누락**
+   - **문제**: animations.js의 draw 함수들이 ctx를 매개변수로 받지만 game.js에서 전달 안 함
+   - **에러**: `TypeError: undefined is not an object (evaluating 'ctx.save')`
+   - **해결**: 모든 draw 함수 호출 시 ctx 전달
+   ```javascript
+   // Before
+   drawParticles();
+
+   // After
+   drawParticles(ctx);
+   drawBallTrail(ctx, BALL.RADIUS, COLORS.BALL);
+   ```
+
+**Git 커밋 내역** (10개):
+1. `refactor: Extract constants to constants.js module`
+2. `refactor: Extract audio module from game.js`
+3. `fix: Fix UTF-8 encoding issues in constants.js`
+4. `refactor: Extract UI module from game.js`
+5. `refactor: Split ui.js into separate modules for better organization`
+6. `refactor: Extract input handling module from game.js`
+7. `refactor: Extract basic animation system to animations.js`
+8. `refactor: Complete animations.js module extraction`
+9. `refactor: Extract items.js module`
+10. `refactor: Extract bricks.js module`
+
+**파일 변경**:
+- 9개 신규 모듈 파일 생성
+- game.js 리팩토링 (~950 lines 감소)
+- index.html: type="module" 추가
+
+**테스트 방법**:
+- 모든 게임 기능 정상 작동 확인
+- 브라우저 콘솔 에러 없는지 확인
+- 모듈 로딩 순서 문제 없는지 확인
+
+---
+
 ## 다음 할 일
 - [x] 8단계: 난이도 시스템 및 추가 기능 완료
 - [x] 9단계: 로컬라이징 (다국어 지원) 완료
@@ -813,18 +992,20 @@ let paddleHitWaves = [];
 - [x] 13단계: 효과음 시스템 완료
 - [x] 14단계: 배경 음악 및 UI 사운드 완료 (8개 이슈 해결)
 - [x] 15단계: 게임플레이 버그 수정 완료 (공 벽 끼임 현상)
+- [x] 16단계: 애니메이션 시스템 완료 (10/10)
+- [ ] 17단계: 코드 리팩토링 (9/10 모듈 완료)
+  - [x] constants.js
+  - [x] audio.js
+  - [x] i18n.js
+  - [x] theme.js
+  - [x] stats.js
+  - [x] input.js
+  - [x] animations.js
+  - [x] items.js
+  - [x] bricks.js
+  - [ ] physics.js (예정)
+  - [ ] PR 생성 및 main 병합
 - [x] 레벨 시스템 제거 (벽돌 클리어 = 게임 승리)
-- [ ] 16단계: 애니메이션 시스템 (4/10 완료)
-  - [x] 벽돌 파괴 애니메이션
-  - [x] 공 트레일 효과
-  - [x] 파워업 아이템 애니메이션
-  - [x] 점수 팝업 애니메이션
-  - [ ] 패들 히트 효과
-  - [ ] 패들 크기 변경 애니메이션
-  - [ ] 생명력 회복/소실 애니메이션
-  - [ ] 일시정지 UI 팝업 애니메이션
-  - [ ] 레벨 전환 애니메이션
-  - [ ] 콤보 효과 애니메이션
 - [ ] 패들 충돌 로직 검토 (공이 패들 중심에 맞을 때 속도 감소 현상)
 - [ ] 선택 사항: 모바일 터치 컨트롤
 
