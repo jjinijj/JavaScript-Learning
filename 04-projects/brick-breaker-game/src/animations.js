@@ -23,17 +23,17 @@ export let scorePopups = [];
 // 패들 히트 파동 배열
 export let paddleHitWaves = [];
 
-// 패들 애니메이션 상태
-export let paddleAnimation = null;
+// ========================================
+// 애니메이션 초기화 함수
+// ========================================
 
-// 생명력 애니메이션 상태
-export let lifeAnimation = null;
-
-// UI 팝업 애니메이션 상태
-export let uiPopupAnimation = null;
-
-// 레벨 전환 애니메이션 상태
-export let levelTransition = null;
+export function resetAnimations() {
+    particles.length = 0;
+    brickFragments.length = 0;
+    ballTrail.length = 0;
+    scorePopups.length = 0;
+    paddleHitWaves.length = 0;
+}
 
 // ========================================
 // 입자 시스템
@@ -266,18 +266,3 @@ export function drawPaddleHitWaves(ctx) {
     });
 }
 
-// ========================================
-// 애니메이션 초기화
-// ========================================
-
-export function resetAnimations() {
-    particles.length = 0;
-    brickFragments.length = 0;
-    ballTrail.length = 0;
-    scorePopups.length = 0;
-    paddleHitWaves.length = 0;
-    paddleAnimation = null;
-    lifeAnimation = null;
-    uiPopupAnimation = null;
-    levelTransition = null;
-}

@@ -10,7 +10,6 @@ import {
     GAME,
     ITEM,
     ITEM_TYPES,
-    PARTICLE,
     ANIMATION,
     DIFFICULTY_SETTINGS
 } from './constants.js';
@@ -60,11 +59,7 @@ import {
 } from './input.js';
 
 import {
-    particles,
-    brickFragments,
-    ballTrail,
-    scorePopups,
-    paddleHitWaves,
+    resetAnimations,
     createParticles,
     updateParticles,
     drawParticles,
@@ -348,175 +343,11 @@ function getPaddleWidth() {
 // ========================================
 
 // 입자 생성 (벽돌 파괴 시)
-function createParticles(x, y, color) {
-    for (let i = 0; i < PARTICLE.COUNT; i++) {
-        // 랜덤한 방향으로 튀어나가는 속도
-        const angle = (Math.PI * 2 * i) / PARTICLE.COUNT + (Math.random() - 0.5) * 0.5;
-        const speed = PARTICLE.SPEED * (0.5 + Math.random() * 0.5);
-
-        particles.push({
-            x: x,
-            y: y,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed,
-            size: PARTICLE.SIZE * (0.5 + Math.random() * 0.5),
-            color: color,
-            life: PARTICLE.LIFETIME,
-            maxLife: PARTICLE.LIFETIME
-        });
-    }
-}
-
-// 입자 업데이트
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-
-        // 위치 업데이트
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // 중력 적용
-        p.vy += PARTICLE.GRAVITY;
-
-        // 생명 감소
-        p.life--;
-
-        // 수명이 다한 입자 제거
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-        }
-    }
-}
-
-// 입자 그리기
-function drawParticles() {
-    particles.forEach(p => {
-        const alpha = p.life / p.maxLife; // 투명도 (점점 투명해짐)
-
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-        ctx.restore();
-    });
-}
-
 // ========================================
-// 애니메이션 함수 - 1. 벽돌 파괴 (조각 흩어지기)
+// 애니메이션 함수 (animations.js에서 import)
 // ========================================
 
-// 벽돌 조각 생성
-function createBrickFragments(x, y, width, height, color) {
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-
-    for (let i = 0; i < ANIMATION.BRICK_DESTROY.FRAGMENT_COUNT; i++) {
-        // 각도를 균등하게 분배하고 약간의 랜덤 추가
-        const angle = (Math.PI * 2 * i) / ANIMATION.BRICK_DESTROY.FRAGMENT_COUNT + (Math.random() - 0.5);
-        const speed = ANIMATION.BRICK_DESTROY.SPREAD_SPEED * (0.7 + Math.random() * 0.6);
-
-        brickFragments.push({
-            x: centerX,
-            y: centerY,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - 2, // 위쪽으로 튀어나감
-            size: ANIMATION.BRICK_DESTROY.FRAGMENT_SIZE,
-            color: color,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * ANIMATION.BRICK_DESTROY.ROTATION_SPEED,
-            life: ANIMATION.BRICK_DESTROY.LIFETIME,
-            maxLife: ANIMATION.BRICK_DESTROY.LIFETIME
-        });
-    }
-}
-
-// 벽돌 조각 업데이트
-function updateBrickFragments() {
-    for (let i = brickFragments.length - 1; i >= 0; i--) {
-        const f = brickFragments[i];
-
-        // 위치 업데이트
-        f.x += f.vx;
-        f.y += f.vy;
-
-        // 중력 적용
-        f.vy += PARTICLE.GRAVITY;
-
-        // 회전
-        f.rotation += f.rotationSpeed;
-
-        // 생명 감소
-        f.life--;
-
-        // 수명이 다한 조각 제거
-        if (f.life <= 0) {
-            brickFragments.splice(i, 1);
-        }
-    }
-}
-
-// 벽돌 조각 그리기
-function drawBrickFragments() {
-    brickFragments.forEach(f => {
-        const alpha = f.life / f.maxLife; // 투명도 (점점 투명해짐)
-
-        ctx.save();                           // 현재 상태 저장
-        ctx.globalAlpha = alpha;              // 투명도 설정
-        ctx.translate(f.x, f.y);             // 조각 위치로 이동
-        ctx.rotate(f.rotation);              // 조각 회전
-        ctx.fillStyle = f.color;             // 조각 색상
-        ctx.fillRect(-f.size / 2, -f.size / 2, f.size, f.size); // 중심 기준 그리기
-        ctx.restore();                        // 원래 상태로 복구
-    });
-}
-
-// ========================================
-// 애니메이션 함수 - 2. 공 트레일 효과
-// ========================================
-
-// 공 트레일 업데이트
-function updateBallTrail() {
-    // 공이 발사되지 않았으면 트레일 생성 안 함
-    if (!ballLaunched) {
-        ballTrail = [];
-        return;
-    }
-
-    // 현재 공 위치 추가
-    ballTrail.push({
-        x: ballX,
-        y: ballY,
-        life: 1.0
-    });
-
-    // 최대 길이 유지
-    if (ballTrail.length > ANIMATION.BALL_TRAIL.MAX_LENGTH) {
-        ballTrail.shift(); // 맨 앞 제거
-    }
-
-    // 트레일 페이드 아웃
-    ballTrail.forEach(t => {
-        t.life -= ANIMATION.BALL_TRAIL.FADE_SPEED;
-    });
-
-    // 투명도가 0 이하인 트레일 제거
-    ballTrail = ballTrail.filter(t => t.life > 0);
-}
-
-// 공 트레일 그리기
-function drawBallTrail() {
-    ballTrail.forEach(t => {
-        ctx.save();
-        ctx.globalAlpha = t.life * 0.5; // 반투명 (0.5 곱해서 더 투명하게)
-        ctx.fillStyle = COLORS.BALL;
-        ctx.beginPath();
-        // 크기도 점점 작아지게
-        ctx.arc(t.x, t.y, BALL.RADIUS * t.life * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
-}
+// 공 트레일 효과 (animations.js에서 import)
 
 // ========================================
 // 애니메이션 함수 - 3. 파워업 아이템 애니메이션 (회전/반짝임)
@@ -588,115 +419,9 @@ function drawAnimatedItems() {
     });
 }
 
-// ========================================
-// 애니메이션 함수 - 4. 점수 팝업 애니메이션
-// ========================================
+// 점수 팝업 애니메이션 (animations.js에서 import)
 
-// 점수 팝업 생성
-function createScorePopup(x, y, score) {
-    scorePopups.push({
-        x: x,
-        y: y,
-        score: score,
-        life: ANIMATION.SCORE_POPUP.LIFETIME,
-        maxLife: ANIMATION.SCORE_POPUP.LIFETIME
-    });
-}
-
-// 점수 팝업 업데이트
-function updateScorePopups() {
-    for (let i = scorePopups.length - 1; i >= 0; i--) {
-        const popup = scorePopups[i];
-
-        // 위로 떠오름
-        popup.y -= ANIMATION.SCORE_POPUP.FLOAT_SPEED;
-
-        // 생명 감소
-        popup.life--;
-
-        // 수명이 다한 팝업 제거
-        if (popup.life <= 0) {
-            scorePopups.splice(i, 1);
-        }
-    }
-}
-
-// 점수 팝업 그리기
-function drawScorePopups() {
-    scorePopups.forEach(popup => {
-        const alpha = popup.life / popup.maxLife; // 투명도 (점점 투명해짐)
-        const progress = 1 - alpha; // 0(시작) ~ 1(끝)
-        const scale = 1 + progress * 0.5; // 점점 커짐 (1.0 ~ 1.5)
-
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#ffd700'; // 금색
-        ctx.strokeStyle = '#ffffff'; // 흰색 테두리
-        ctx.lineWidth = 2;
-        ctx.font = `bold ${ANIMATION.SCORE_POPUP.FONT_SIZE * scale}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        // 테두리
-        ctx.strokeText(`+${popup.score}`, popup.x, popup.y);
-        // 텍스트
-        ctx.fillText(`+${popup.score}`, popup.x, popup.y);
-
-        ctx.restore();
-    });
-}
-
-// ========================================
-// 애니메이션 함수 - 5. 패들 히트 효과 (충격파)
-// ========================================
-
-// 패들 히트 충격파 생성
-function createPaddleHitWave(x, y) {
-    // 여러 개의 파동을 시간차를 두고 생성
-    for (let i = 0; i < ANIMATION.PADDLE_HIT.WAVE_COUNT; i++) {
-        paddleHitWaves.push({
-            x: x,
-            y: y,
-            radius: i * 10, // 시작 반지름 (시간차 효과)
-            life: ANIMATION.PADDLE_HIT.LIFETIME - i * 5, // 생명 주기 (시간차)
-            maxLife: ANIMATION.PADDLE_HIT.LIFETIME
-        });
-    }
-}
-
-// 패들 히트 충격파 업데이트
-function updatePaddleHitWaves() {
-    for (let i = paddleHitWaves.length - 1; i >= 0; i--) {
-        const wave = paddleHitWaves[i];
-
-        // 반지름 증가 (파동이 퍼짐)
-        wave.radius += ANIMATION.PADDLE_HIT.WAVE_SPEED;
-
-        // 생명 감소
-        wave.life--;
-
-        // 수명이 다했거나 최대 반지름을 넘으면 제거
-        if (wave.life <= 0 || wave.radius > ANIMATION.PADDLE_HIT.MAX_RADIUS) {
-            paddleHitWaves.splice(i, 1);
-        }
-    }
-}
-
-// 패들 히트 충격파 그리기
-function drawPaddleHitWaves() {
-    paddleHitWaves.forEach(wave => {
-        const alpha = wave.life / wave.maxLife; // 투명도 (점점 투명해짐)
-
-        ctx.save();
-        ctx.globalAlpha = alpha * 0.6; // 반투명
-        ctx.strokeStyle = '#ffffff'; // 흰색 파동
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-    });
-}
+// 패들 히트 효과 (animations.js에서 import)
 
 // ========================================
 // 애니메이션 함수 - 6. 패들 크기 변경 애니메이션
@@ -1261,15 +986,11 @@ function toggleFullscreen() {
 // 아이템 및 효과 초기화
 function resetItems() {
     items = [];
-    particles = [];  // 입자도 초기화
-    brickFragments = [];  // 벽돌 조각도 초기화
-    ballTrail = [];  // 공 트레일도 초기화
-    scorePopups = [];  // 점수 팝업도 초기화
-    paddleHitWaves = [];  // 패들 히트 충격파도 초기화
-    paddleAnimation = null;  // 패들 애니메이션도 초기화
-    lifeAnimation = null;  // 생명력 애니메이션도 초기화
-    uiPopupAnimation = null;  // UI 팝업 애니메이션도 초기화
-    levelTransition = null;  // 레벨 전환 애니메이션도 초기화
+    resetAnimations();  // 애니메이션 배열 초기화
+    paddleAnimation = null;
+    lifeAnimation = null;
+    uiPopupAnimation = null;
+    levelTransition = null;
 
     // 생명력 애니메이션 CSS 클래스 제거
     if (UI.lives) {
@@ -1699,7 +1420,9 @@ function update() {
     updateBrickFragments();
 
     // 공 트레일 업데이트
-    updateBallTrail();
+    if (ballLaunched) {
+        updateBallTrail(ballX, ballY);
+    }
 
     // 점수 팝업 업데이트
     updateScorePopups();
@@ -1727,13 +1450,13 @@ function draw() {
     drawAnimatedItems();
 
     // 입자 그리기
-    drawParticles();
+    drawParticles(ctx);
 
     // 벽돌 조각 그리기
-    drawBrickFragments();
+    drawBrickFragments(ctx);
 
     // 공 트레일 그리기 (공보다 먼저 그려야 뒤에 나옴)
-    drawBallTrail();
+    drawBallTrail(ctx, BALL.RADIUS, COLORS.BALL);
 
     // 공 그리기
     drawBall();
@@ -1742,10 +1465,10 @@ function draw() {
     drawPaddle();
 
     // 패들 히트 충격파 그리기
-    drawPaddleHitWaves();
+    drawPaddleHitWaves(ctx);
 
     // 점수 팝업 그리기 (맨 위에 표시)
-    drawScorePopups();
+    drawScorePopups(ctx);
 
     // 레벨 전환 애니메이션 그리기 (최상위 레이어)
     drawLevelTransition();
