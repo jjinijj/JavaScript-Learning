@@ -39,13 +39,19 @@ import {
 import {
     t,
     setLanguage,
-    getCurrentLanguage,
+    getCurrentLanguage
+} from './i18n.js';
+
+import {
     setTheme,
-    getCurrentTheme,
+    getCurrentTheme
+} from './theme.js';
+
+import {
     loadStats,
     updateStats,
     getStats
-} from './ui.js';
+} from './stats.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조

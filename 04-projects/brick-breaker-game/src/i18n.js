@@ -1,9 +1,5 @@
 // ========================================
-// UI 시스템 (언어, 테마, 통계)
-// ========================================
-
-// ========================================
-// 언어 시스템
+// 다국어 지원 시스템 (i18n - internationalization)
 // ========================================
 
 let currentLanguage = 'ko'; // 현재 언어
@@ -80,91 +76,4 @@ function updateDynamicTexts() {
 
 export function getCurrentLanguage() {
     return currentLanguage;
-}
-
-// ========================================
-// 테마 시스템
-// ========================================
-
-let currentTheme = 'classic'; // 현재 테마
-
-// 테마 설정
-export function setTheme(theme) {
-    currentTheme = theme;
-
-    // HTML body에 data-theme 속성 설정
-    if (theme === 'classic') {
-        document.body.removeAttribute('data-theme');
-    } else {
-        document.body.setAttribute('data-theme', theme);
-    }
-
-    // LocalStorage에 저장
-    localStorage.setItem('theme', theme);
-
-    console.log('🎨 테마 변경:', theme);
-}
-
-export function getCurrentTheme() {
-    return currentTheme;
-}
-
-// ========================================
-// 통계 시스템
-// ========================================
-
-let stats = {
-    totalGames: 0,
-    bestScore: 0,
-    totalBricks: 0
-};
-
-// 통계 로드
-export function loadStats() {
-    const saved = localStorage.getItem('gameStats');
-    if (saved) {
-        try {
-            stats = JSON.parse(saved);
-            console.log('📊 통계 로드됨:', stats);
-        } catch (error) {
-            console.error('통계 로드 실패:', error);
-        }
-    }
-    return stats;
-}
-
-// 통계 저장
-export function saveStats() {
-    localStorage.setItem('gameStats', JSON.stringify(stats));
-    console.log('📊 통계 저장됨:', stats);
-}
-
-// 통계 업데이트
-export function updateStats(gameData) {
-    if (gameData.gameCompleted) {
-        stats.totalGames++;
-    }
-    if (gameData.score > stats.bestScore) {
-        stats.bestScore = gameData.score;
-    }
-    if (gameData.bricksDestroyed) {
-        stats.totalBricks += gameData.bricksDestroyed;
-    }
-    saveStats();
-}
-
-// 통계 가져오기
-export function getStats() {
-    return { ...stats };
-}
-
-// 통계 초기화
-export function resetStats() {
-    stats = {
-        totalGames: 0,
-        bestScore: 0,
-        totalBricks: 0
-    };
-    saveStats();
-    console.log('📊 통계 초기화됨');
 }
