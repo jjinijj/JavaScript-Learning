@@ -36,6 +36,17 @@ import {
     loadVolume
 } from './audio.js';
 
+import {
+    t,
+    setLanguage,
+    getCurrentLanguage,
+    setTheme,
+    getCurrentTheme,
+    loadStats,
+    updateStats,
+    getStats
+} from './ui.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -106,118 +117,8 @@ let gamePaused = false;   // 일시정지
 // ========================================
 let difficulty = 'normal'; // 난이도
 
-// ========================================
-// 언어 시스템 (i18n)
-// ========================================
-let currentLanguage = 'ko'; // 현재 언어
-let translations = {};      // 로드된 번역 데이터
-
-// ========================================
-// 테마 시스템
-// ========================================
-let currentTheme = 'classic'; // 현재 테마
-
-// 게임 통계
-let stats = {
-    totalGames: 0,
-    bestScore: 0,
-    totalBricks: 0
-};
-
 // DOM 요소 캐싱
 const UI = {};
-
-// ========================================
-// 언어 시스템 함수
-// ========================================
-
-// 번역 텍스트 가져오기 (translate의 약자)
-function t(key) {
-    return translations[key] || key;
-}
-
-// JSON 파일에서 언어 로드
-async function loadLanguage(lang) {
-    try {
-        const response = await fetch(`../lang/${lang}.json`);
-        if (!response.ok) {
-            throw new Error(`Failed to load language: ${lang}`);
-        }
-        translations = await response.json();
-        console.log(`✅ 언어 로드 완료: ${lang}`);
-        return true;
-    } catch (error) {
-        console.error(`❌ 언어 로드 실패: ${lang}`, error);
-        return false;
-    }
-}
-
-// 언어 설정 및 UI 업데이트
-async function setLanguage(lang) {
-    currentLanguage = lang;
-    const success = await loadLanguage(lang);
-
-    if (success) {
-        updateLanguageUI();
-        localStorage.setItem('language', lang);
-
-        // HTML lang 속성 업데이트
-        document.documentElement.lang = lang;
-
-        // 페이지 제목 업데이트
-        document.title = t('pageTitle');
-
-        console.log(`🌐 언어 변경: ${lang}`);
-    }
-}
-
-// 모든 UI 요소의 언어 업데이트
-function updateLanguageUI() {
-    // data-i18n 속성을 가진 모든 요소 찾기
-    document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        const translation = t(key);
-
-        // innerHTML로 설정 (br 태그 지원)
-        if (translation.includes('<br>')) {
-            element.innerHTML = translation;
-        } else {
-            element.textContent = translation;
-        }
-    });
-
-    // 특수한 경우: "레벨 X 완료!" 같은 동적 텍스트
-    updateDynamicTexts();
-
-    // 음소거 버튼도 업데이트
-    updateMuteButton();
-}
-
-// 동적 텍스트 업데이트 (숫자가 포함된 텍스트)
-function updateDynamicTexts() {
-    // "레벨 X 완료!" 패턴 - 나중에 필요시 구현
-}
-
-// ========================================
-// 테마 시스템 함수
-// ========================================
-
-// 테마 설정
-function setTheme(theme) {
-    currentTheme = theme;
-
-    // HTML body에 data-theme 속성 설정
-    if (theme === 'classic') {
-        document.body.removeAttribute('data-theme');
-    } else {
-        document.body.setAttribute('data-theme', theme);
-    }
-
-    // LocalStorage에 저장
-    localStorage.setItem('theme', theme);
-
-    console.log('🎨 테마 변경:', theme);
-}
 
 // ========================================
 // 사운드 시스템 함수
@@ -1198,14 +1099,14 @@ async function init() {
     UI.fullscreenBtn.addEventListener('click', toggleFullscreen);
 
     // 언어 선택 이벤트 등록
-    UI.languageSelect.value = currentLanguage; // 현재 언어로 설정
+    UI.languageSelect.value = getCurrentLanguage(); // 현재 언어로 설정
     UI.languageSelect.addEventListener('change', (e) => {
         playClickSound();
-        setLanguage(e.target.value);
+        setLanguage(e.target.value, updateMuteButton);
     });
 
     // 테마 선택 이벤트 등록
-    UI.themeSelect.value = currentTheme; // 현재 테마로 설정
+    UI.themeSelect.value = getCurrentTheme(); // 현재 테마로 설정
     UI.themeSelect.addEventListener('change', (e) => {
         playClickSound();
         setTheme(e.target.value);
@@ -1238,22 +1139,9 @@ async function init() {
 }
 
 // 통계 저장
-function saveStats() {
-    localStorage.setItem('brickBreakerStats', JSON.stringify(stats));
-    console.log('통계 저장됨:', stats);
-}
-
-// 통계 로드
-function loadStats() {
-    const saved = localStorage.getItem('brickBreakerStats');
-    if (saved) {
-        stats = JSON.parse(saved);
-        console.log('통계 로드됨:', stats);
-    }
-}
-
 // 통계 표시 업데이트
 function updateStatsDisplay() {
+    const stats = getStats();
     UI.totalGames.textContent = stats.totalGames;
     UI.bestScore.textContent = stats.bestScore;
     UI.totalBricks.textContent = stats.totalBricks;
@@ -1487,11 +1375,11 @@ function gameWin() {
     });
 
     // 통계 업데이트
-    stats.totalGames++;
-    if (score > stats.bestScore) {
-        stats.bestScore = score;
-    }
-    saveStats();
+    updateStats({
+        gameCompleted: true,
+        score: score,
+        bricksDestroyed: 0
+    });
     updateStatsDisplay();
 
     console.log('게임 승리! 최종 점수:', score);
@@ -1630,7 +1518,11 @@ function collisionDetection() {
                     createScorePopup(brickCenterX, brickCenterY, 10);
 
                     // 통계 업데이트 (파괴한 벽돌 총 개수)
-                    stats.totalBricks++;
+                    updateStats({
+                        gameCompleted: false,
+                        score: 0,
+                        bricksDestroyed: 1
+                    });
                     updateStatsDisplay();
 
                     console.log('벽돌 파괴:', c, r, '점수:', score);
@@ -1744,20 +1636,20 @@ function update() {
 
                 // UI 표시
                 UI.finalScore.textContent = score;
-                UI.highScore.textContent = stats.bestScore;
+                UI.highScore.textContent = getStats().bestScore;
                 UI.gameOverScreen.classList.remove('hidden');
                 startUIPopupAnimation(UI.gameOverScreen);
             });
 
             // 통계 업데이트
-            stats.totalGames++;
-            if (score > stats.bestScore) {
-                stats.bestScore = score;
-            }
-            saveStats();
+            updateStats({
+                gameCompleted: true,
+                score: score,
+                bricksDestroyed: 0
+            });
             updateStatsDisplay();
 
-            console.log('게임 오버! 최종 점수:', score, '총 게임 수:', stats.totalGames);
+            console.log('게임 오버! 최종 점수:', score, '총 게임 수:', getStats().totalGames);
         } else {
             // 생명 손실 사운드
             playLifeLostSound();
