@@ -15,6 +15,27 @@ import {
     DIFFICULTY_SETTINGS
 } from './constants.js';
 
+import {
+    initAudio,
+    playClickSound,
+    playBrickBreakSound,
+    playPaddleHitSound,
+    playWallHitSound,
+    playLifeLostSound,
+    playGameOverSound,
+    playWinSound,
+    stopBGM,
+    playMenuBGM,
+    playGameBGM,
+    toggleMute,
+    getMuted,
+    setMuted,
+    setBGMVolume,
+    setSFXVolume,
+    getVolume,
+    loadVolume
+} from './audio.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -102,27 +123,6 @@ let stats = {
     bestScore: 0,
     totalBricks: 0
 };
-
-// ========================================
-// 사운드 시스템
-// ========================================
-let audioContext = null;
-let isMuted = false;
-
-// BGM 관련 변수
-let bgmOscillator = null;
-let bgmGainNode = null;
-let currentBGM = null;  // 'menu', 'game', 'gameover'
-let isBGMPlaying = false;
-
-// 볼륨 설정 (0.0 ~ 1.0)
-let VOLUME = {
-    BGM: 0.1,      // 배경음악 볼륨 (낮게 설정)
-    SFX: 0.2       // 효과음 볼륨
-};
-
-// 볼륨 저장/로드 키
-const VOLUME_STORAGE_KEY = 'brickBreakerVolume';
 
 // DOM 요소 캐싱
 const UI = {};
@@ -224,156 +224,6 @@ function setTheme(theme) {
 // ========================================
 
 // AudioContext 초기화 (저지연 모드)
-function initAudio() {
-    if (!audioContext) {
-        // latencyHint를 'interactive'로 설정하여 지연 최소화
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({
-            latencyHint: 'interactive',  // 'interactive' = 최소 지연 (게임용)
-            sampleRate: 44100            // 표준 샘플레이트
-        });
-        console.log('🎵 AudioContext 초기화 (저지연 모드)');
-        console.log('   - 기본 지연시간:', audioContext.baseLatency);
-        console.log('   - 출력 지연시간:', audioContext.outputLatency);
-    }
-}
-
-// 비프 사운드 재생 (저지연 최적화)
-function playBeep(frequency, duration, volume = VOLUME.SFX) {
-    if (isMuted || !audioContext) return;
-
-    try {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.frequency.value = frequency;
-        oscillator.type = 'square';
-
-        const now = audioContext.currentTime;
-
-        // 즉시 시작, 빠른 페이드 아웃
-        gainNode.gain.setValueAtTime(volume, now);
-        gainNode.gain.linearRampToValueAtTime(0, now + duration);
-
-        oscillator.start(now);
-        oscillator.stop(now + duration);
-     } catch (error) {
-        console.warn('사운드 재생 실패:', error);
-    }
-}
-
-// UI 클릭 사운드
-function playClickSound() {
-    playBeep(600, 0.03, VOLUME.SFX * 0.8);
-}
-
-// 벽돌 파괴 사운드
-function playBrickBreakSound() {
-    playBeep(800, 0.05, VOLUME.SFX);
-}
-
-// 패들 충돌 사운드
-function playPaddleHitSound() {
-    playBeep(300, 0.05, VOLUME.SFX);
-}
-
-// 벽 충돌 사운드
-function playWallHitSound() {
-    playBeep(200, 0.03, VOLUME.SFX * 0.75);
-}
-
-// 생명 손실 사운드
-function playLifeLostSound() {
-    playBeep(150, 0.3, VOLUME.SFX);
-}
-
-// 게임 오버 사운드
-function playGameOverSound() {
-    if (isMuted || !audioContext) return;
-    playBeep(400, 0.15, VOLUME.SFX);
-    setTimeout(() => playBeep(300, 0.15, VOLUME.SFX), 150);
-    setTimeout(() => playBeep(200, 0.3, VOLUME.SFX), 300);
-}
-
-// 게임 승리 사운드
-function playWinSound() {
-    if (isMuted || !audioContext) return;
-    playBeep(400, 0.1, VOLUME.SFX);
-    setTimeout(() => playBeep(500, 0.1, VOLUME.SFX), 100);
-    setTimeout(() => playBeep(600, 0.2, VOLUME.SFX), 200);
-}
-
-// ========================================
-// BGM 시스템 함수
-// ========================================
-
-// BGM 정지
-function stopBGM() {
-    if (bgmOscillator) {
-        bgmOscillator.stop();
-        bgmOscillator = null;
-        bgmGainNode = null;
-    }
-
-    isBGMPlaying = false;
-    currentBGM = null;  // currentBGM 초기화
-    console.log('🎵 BGM 정지');
-}
-
-// BGM 재생 공통 함수
-function playBGM(type, notes, waveType, noteDuration, interval) {
-    if (isMuted || !audioContext || currentBGM === type) return;
-
-    stopBGM();
-    currentBGM = type;
-
-    console.log("play bgm : " + type);
-
-    let noteIndex = 0;
-
-    function playNextNote() {
-        // 음소거 또는 BGM 정지 체크
-        if (!isBGMPlaying || currentBGM !== type || isMuted) return;
-
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        oscillator.frequency.value = notes[noteIndex];
-        oscillator.type = waveType;
-
-        gainNode.gain.setValueAtTime(VOLUME.BGM, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + noteDuration);
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + noteDuration);
-
-        noteIndex = (noteIndex + 1) % notes.length;
-
-        setTimeout(playNextNote, interval);
-    }
-
-    isBGMPlaying = true;
-    playNextNote();
-    console.log(`🎵 ${type} BGM 재생`);
-}
-
-// 메뉴 BGM 재생 (차분한 멜로디)
-function playMenuBGM() {
-    const notes = [262, 330, 392, 330]; // C4, E4, G4, E4
-    playBGM('menu', notes, 'sine', 0.4, 500);
-}
-
-// 게임 플레이 BGM 재생 (빠른 비트)
-function playGameBGM() {
-    const notes = [294, 440, 294, 440]; // D4, A4, D4, A4
-    playBGM('game', notes, 'square', 0.2, 300);
-}
-
 // ========================================
 // 아이템 시스템 함수
 // ========================================
@@ -1331,7 +1181,7 @@ async function init() {
     // 음소거 상태 로드
     const savedMuted = localStorage.getItem('brickBreakerMuted');
     if (savedMuted !== null) {
-        isMuted = savedMuted === 'true';
+        setMuted(savedMuted === 'true');
         updateMuteButton();
     }
 
@@ -1344,7 +1194,7 @@ async function init() {
     document.getElementById('quitBtn').addEventListener('click', showMenu);
     document.getElementById('playAgainBtn').addEventListener('click', restartGame);
     document.getElementById('winMenuBtn').addEventListener('click', showMenu);
-    UI.muteBtn.addEventListener('click', toggleMute);
+    UI.muteBtn.addEventListener('click', handleMuteToggle);
     UI.fullscreenBtn.addEventListener('click', toggleFullscreen);
 
     // 언어 선택 이벤트 등록
@@ -1368,11 +1218,11 @@ async function init() {
 
     // 볼륨 슬라이더 이벤트 등록
     UI.bgmVolume.addEventListener('input', (e) => {
-        setBGMVolume(e.target.value);
+        handleBGMVolumeChange(e.target.value);
     });
 
     UI.sfxVolume.addEventListener('input', (e) => {
-        setSFXVolume(e.target.value);
+        handleSFXVolumeChange(e.target.value);
     });
 
     // AudioContext 초기화 (메뉴에서 첫 클릭 시)
@@ -1409,87 +1259,57 @@ function updateStatsDisplay() {
     UI.totalBricks.textContent = stats.totalBricks;
 }
 
-// 볼륨 저장
-function saveVolume() {
-    localStorage.setItem(VOLUME_STORAGE_KEY, JSON.stringify(VOLUME));
-    console.log('볼륨 저장됨:', VOLUME);
-}
+// ========================================
+// UI 업데이트 함수
+// ========================================
 
-// 볼륨 로드
-function loadVolume() {
-    const saved = localStorage.getItem(VOLUME_STORAGE_KEY);
-    if (saved) {
-        VOLUME = JSON.parse(saved);
-        console.log('볼륨 로드됨:', VOLUME);
-    }
-    return VOLUME;
-}
-
-// 볼륨 슬라이더 업데이트
+// 볼륨 슬라이더 UI 업데이트
 function updateVolumeUI() {
+    const volume = getVolume();
     if (UI.bgmVolume) {
-        UI.bgmVolume.value = Math.round(VOLUME.BGM * 100);
-        UI.bgmVolumeValue.textContent = Math.round(VOLUME.BGM * 100) + '%';
+        UI.bgmVolume.value = Math.round(volume.BGM * 100);
+        UI.bgmVolumeValue.textContent = Math.round(volume.BGM * 100) + '%';
     }
     if (UI.sfxVolume) {
-        UI.sfxVolume.value = Math.round(VOLUME.SFX * 100);
-        UI.sfxVolumeValue.textContent = Math.round(VOLUME.SFX * 100) + '%';
+        UI.sfxVolume.value = Math.round(volume.SFX * 100);
+        UI.sfxVolumeValue.textContent = Math.round(volume.SFX * 100) + '%';
     }
-}
-
-// BGM 볼륨 변경
-function setBGMVolume(value) {
-    VOLUME.BGM = value / 100;
-    saveVolume();
-    updateVolumeUI();
-    console.log('BGM 볼륨:', VOLUME.BGM);
-}
-
-// 효과음 볼륨 변경
-function setSFXVolume(value) {
-    VOLUME.SFX = value / 100;
-    saveVolume();
-    updateVolumeUI();
-
-    // 테스트 사운드 재생
-    playClickSound();
-
-    console.log('효과음 볼륨:', VOLUME.SFX);
-}
-
-// 음소거 토글
-function toggleMute() {
-    isMuted = !isMuted;
-
-    // 음소거 상태 LocalStorage에 저장
-    localStorage.setItem('brickBreakerMuted', isMuted);
-
-    // 버튼 텍스트 업데이트
-    updateMuteButton();
-
-    // 음소거 시 BGM 정지, 해제 시 적절한 BGM 재생
-    if (isMuted) {
-        stopBGM();
-    } else {
-        // 게임 상태에 따라 적절한 BGM 재생
-        if (gameRunning) {
-            // 게임 중이면 게임 BGM (일시정지 중에도 재생)
-            playGameBGM();
-        } else {
-            // 메뉴 화면이면 메뉴 BGM
-            playMenuBGM();
-        }
-    }
-
-    console.log('음소거:', isMuted);
 }
 
 // 음소거 버튼 텍스트 업데이트
 function updateMuteButton() {
     if (!UI.muteBtn) return;
 
-    const icon = isMuted ? '🔇' : '🔊';
+    const icon = getMuted() ? '🔇' : '🔊';
     UI.muteBtn.textContent = `${icon} ${t('muteBtn')}`;
+}
+
+// 음소거 토글 (게임 상태에 따른 BGM 처리 포함)
+function handleMuteToggle() {
+    const muted = toggleMute();
+    updateMuteButton();
+
+    // 음소거 해제 시 게임 상태에 따라 적절한 BGM 재생
+    if (!muted) {
+        if (gameRunning) {
+            playGameBGM();
+        } else {
+            playMenuBGM();
+        }
+    }
+}
+
+// BGM 볼륨 변경 (UI 업데이트 포함)
+function handleBGMVolumeChange(value) {
+    setBGMVolume(value);
+    updateVolumeUI();
+}
+
+// 효과음 볼륨 변경 (UI 업데이트 및 테스트 사운드 포함)
+function handleSFXVolumeChange(value) {
+    setSFXVolume(value);
+    updateVolumeUI();
+    playClickSound(); // 테스트 사운드
 }
 
 // 전체화면 토글
