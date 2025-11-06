@@ -92,6 +92,10 @@ import {
     getBrick
 } from './bricks.js';
 
+import {
+    checkRectCircleCollision
+} from './physics.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -1066,18 +1070,8 @@ function resetPaddle() {
 // 벽돌 관련 함수 (bricks.js에서 import)
 
 // ========================================
-// 5단계: 충돌 감지 유틸리티 함수
+// 5단계: 충돌 감지 (physics.js에서 import)
 // ========================================
-
-// 사각형과 원의 충돌 감지 (AABB - Axis-Aligned Bounding Box)
-function checkRectCircleCollision(rectX, rectY, rectWidth, rectHeight, circleX, circleY, circleRadius) {
-    return (
-        circleX + circleRadius > rectX &&
-        circleX - circleRadius < rectX + rectWidth &&
-        circleY + circleRadius > rectY &&
-        circleY - circleRadius < rectY + rectHeight
-    );
-}
 
 // 벽돌-공 충돌 감지
 function collisionDetection() {

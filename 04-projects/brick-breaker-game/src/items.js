@@ -3,6 +3,7 @@
 // ========================================
 
 import { ITEM, ITEM_TYPES, CANVAS, PADDLE } from './constants.js';
+import { checkRectCollision } from './physics.js';
 
 // ========================================
 // 아이템 배열
@@ -142,13 +143,4 @@ export function resetItems() {
     items.length = 0;
 }
 
-// ========================================
-// 유틸리티 함수
-// ========================================
-
-function checkRectCollision(x1, y1, w1, h1, x2, y2, w2, h2) {
-    return x1 < x2 + w2 &&
-           x1 + w1 > x2 &&
-           y1 < y2 + h2 &&
-           y1 + h1 > y2;
-}
+// 유틸리티 함수 (physics.js에서 import)
