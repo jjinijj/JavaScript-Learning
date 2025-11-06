@@ -1,32 +1,48 @@
 # 리팩토링 TODO 리스트
 
 ## 1. 파일 구조 분리
-- [ ] **game.js 분리** (진행 중 - Stage 17)
-  - `constants.js` - 모든 상수 정의 (파일 생성 완료)
-  - `animations.js` - 모든 애니메이션 시스템 (파일 생성 완료)
-  - `physics.js` - 충돌 감지, 물리 계산 (파일 생성 완료)
-  - `items.js` - 아이템 시스템 (파일 생성 완료)
-  - `audio.js` - 오디오 관리 (파일 생성 완료)
-  - `ui.js` - UI 관련 로직 (파일 생성 완료)
-  - `input.js` - 입력 처리 (파일 생성 완료)
-  - `game-objects.js` - 공, 패들, 벽돌 객체 및 로직 (파일 생성 완료)
-  - `game-core.js` - 게임 루프, 초기화, 상태 관리 (파일 생성 완료)
+- [x] **game.js 분리** ✅ (Stage 17 완료)
+  - ✅ `constants.js` (175 lines) - 모든 상수 정의
+  - ✅ `audio.js` (232 lines) - 사운드 시스템
+  - ✅ `i18n.js` (79 lines) - 다국어 지원
+  - ✅ `theme.js` (26 lines) - 테마 시스템
+  - ✅ `stats.js` (59 lines) - 통계 관리
+  - ✅ `input.js` (67 lines) - 입력 처리
+  - ✅ `animations.js` (268 lines) - 애니메이션 시스템
+  - ✅ `items.js` (146 lines) - 아이템 시스템
+  - ✅ `bricks.js` (98 lines) - 벽돌 시스템
+  - ✅ `physics.js` (127 lines) - 충돌 감지 유틸리티
+  - **결과**: 2200 lines → ~850 lines (61% 감소)
 
-## 2. Update 함수 분리
+## 2. 게임 객체 클래스화 (OOP)
+- [ ] **Ball, Paddle, Brick 객체지향 리팩토링** (진행 중 - Stage 18)
+  - [ ] `ball.js` - Ball 클래스
+    - 속성: x, y, speedX, speedY, radius, launched
+    - 메서드: update(), draw(), launch(), reset(), checkWallCollision()
+  - [ ] `paddle.js` - Paddle 클래스
+    - 속성: x, y, width, height, animation
+    - 메서드: update(), draw(), move(), reset(), getWidth()
+  - [ ] `brick.js` - Brick 클래스 (bricks.js 리팩토링)
+    - 속성: x, y, width, height, status, color, row, col
+    - 메서드: draw(), destroy(), isAlive()
+    - BrickManager 클래스: 벽돌 그리드 관리
+  - **목표**: 높은 결합도 해소, 캡슐화, 확장성 향상
+
+## 3. Update 함수 분리
 - [ ] **update() 함수 모듈화**
   - `updateGameplay()` - 인게임 로직 (공, 패들, 충돌 등)
   - `updateAnimations()` - 모든 애니메이션 업데이트
   - `updateInput()` - 키보드/마우스 입력 처리
   - 현재: 모든 로직이 하나의 함수에 혼재
 
-## 3. 디자인 패턴 적용
+## 4. 디자인 패턴 적용
 - [ ] **공 상태 패턴 사용**
   - `BallNotLaunched` - 패들에 붙어있는 상태
   - `BallMoving` - 발사되어 움직이는 상태
   - `BallSlowed` - 슬로우 아이템 효과 상태
   - 현재: if문으로 ballLaunched 체크
 
-## 4. 애니메이션 시스템 개선
+## 5. 애니메이션 시스템 개선
 - [ ] **레벨 전환 애니메이션 리팩토링**
   - 현재: if-else로 phase 체크 (fadeIn, display, fadeOut)
   - 개선: 콜백 체인 또는 Promise 기반 시퀀스
@@ -38,7 +54,7 @@
       .then(() => callback());
     ```
 
-## 5. 추가 개선 사항
+## 6. 추가 개선 사항
 - [ ] (여기에 추가 항목 작성)
 
 ---
@@ -62,10 +78,12 @@
 ---
 
 ## 참고
-- 현재 game.js 파일 크기: ~2200 lines
-- 리팩토링 우선순위: 1 → 2 → 4 → 3
-- Stage 16 완료 (2025-10-28)
-- Stage 17 리팩토링 진행 중 (2025-10-28)
+- 현재 game.js 파일 크기: ~850 lines (Stage 17 후)
+- 리팩토링 우선순위: 1 → 2 → 4 → 3 → 5
+  - 이유: 클래스화(2) 후 상태패턴(4) 적용이 자연스럽고, 그 후 update 분리(3)가 단순해짐
+- Stage 16 완료 (2025-10-28): 9개 애니메이션 시스템
+- Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리
+- Stage 18 진행 중 (2025-11-06~): OOP 리팩토링
 
 ## 진행 상황
 
