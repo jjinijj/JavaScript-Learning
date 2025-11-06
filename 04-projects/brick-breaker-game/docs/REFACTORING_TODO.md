@@ -67,11 +67,115 @@
 - Stage 16 완료 (2025-10-28)
 - Stage 17 리팩토링 진행 중 (2025-10-28)
 
-## 진행 상황 (2025-10-28)
-- ✅ Stage 16: 9개 애니메이션 시스템 완성
-- 🔄 Stage 17: 리팩토링 시작
-  - 파일 구조 생성 완료 (9개 모듈 파일)
-  - 다음: 각 파일에 코드 분리 및 이동
+## 진행 상황
+
+### ✅ Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리 리팩토링
+
+**목표**: 2200줄 game.js를 기능별 독립 모듈로 분리
+
+**결과**:
+- 10개 ES6 모듈 추출 완료
+- game.js 크기: 2200 lines → ~850 lines (61% 감소)
+- PR 병합 완료: refactor/stage-17-module-separation → main
+
+#### 추출된 모듈 (10개)
+
+1. **constants.js** (175 lines)
+   - 모든 게임 상수 정의
+   - CANVAS, COLORS, BALL, PADDLE, BRICK, GAME, ITEM, ANIMATION, DIFFICULTY_SETTINGS
+   - export: 상수 객체들
+
+2. **audio.js** (232 lines)
+   - Web Audio API 기반 사운드 시스템
+   - BGM 2곡 (메뉴, 인게임), 효과음 5종
+   - 볼륨 제어 (BGM, SFX 독립), 음소거, localStorage 저장
+   - export: 17개 함수 (init, play, stop, toggle, volume 관련)
+
+3. **i18n.js** (79 lines)
+   - 다국어 지원 (한국어, English)
+   - 언어 전환, 번역 함수
+   - export: t(), setLanguage(), getCurrentLanguage()
+
+4. **theme.js** (26 lines)
+   - 4가지 컬러 테마 (기본, 다크, 네온, 파스텔)
+   - CSS 변수 기반 동적 테마 변경
+   - export: setTheme(), getCurrentTheme()
+
+5. **stats.js** (59 lines)
+   - 게임 통계 (총 플레이, 승/패, 최고 점수, 콤보)
+   - localStorage 저장/로드
+   - export: loadStats(), updateStats(), getStats()
+
+6. **input.js** (67 lines)
+   - 키보드/마우스 입력 처리
+   - 콜백 패턴으로 game.js와 분리
+   - export: isRightPressed, isLeftPressed, setupInputHandlers()
+
+7. **animations.js** (268 lines)
+   - 7가지 애니메이션 시스템
+   - particles, brickFragments, ballTrail, scorePopups, paddleHitWaves, combo, shakeEffect
+   - export: 21개 함수 (create, update, draw, reset 등)
+
+8. **items.js** (146 lines)
+   - 아이템 생성/낙하/충돌/효과
+   - 4가지 아이템 (패들 확대/축소, 공 슬로우, 생명 추가)
+   - 회전/반짝임/발광 애니메이션
+   - export: items 배열, 5개 함수 (create, update, draw 등)
+
+9. **bricks.js** (98 lines)
+   - 벽돌 초기화/그리기/상태 관리
+   - 2D 배열 기반 벽돌 시스템
+   - export: bricks 배열, 5개 함수 (init, draw, check, destroy, get)
+
+10. **physics.js** (127 lines)
+    - 충돌 감지 유틸리티 함수
+    - AABB, 원-사각형, 원-원, 점-사각형 충돌
+    - 수학 함수 (distance, normalize, toRadians, toDegrees)
+    - export: 8개 함수 (checkRectCircleCollision 등)
+    - 중복 제거: items.js의 checkRectCollision 통합
+
+#### 해결한 기술 이슈
+
+1. **ES6 모듈 readonly 변수 문제**
+   - 문제: `export let muted`는 import한 곳에서 수정 불가
+   - 해결: setMuted() 함수 제공
+
+2. **UTF-8 인코딩 문제**
+   - 문제: Write 도구 사용 시 한글 주석 깨짐 (macOS)
+   - 해결: 10개 파일 모두 재작성으로 해결
+
+3. **애니메이션 배열 재할당 에러**
+   - 문제: `particles = []`은 import된 배열 참조를 끊음
+   - 해결: `particles.length = 0` 사용
+
+4. **ctx 매개변수 누락**
+   - 문제: draw 함수들이 전역 ctx를 참조
+   - 해결: 모든 draw 함수에 ctx 매개변수 전달
+
+5. **중복 함수 제거**
+   - items.js의 checkRectCollision을 physics.js에서 import
+
+#### Git 작업
+- 브랜치: refactor/stage-17-module-separation
+- 커밋: 12개 (각 모듈별 추출, 문서 업데이트)
+- PR #1 생성 및 main 브랜치 병합 완료
+
+---
+
+### 🔄 Stage 18 예정 (2025-11-06~): 게임 객체 OOP 리팩토링
+
+**목표**: Ball, Paddle, Brick을 클래스 기반 객체로 전환
+
+**계획**:
+- Ball 클래스 (ball.js)
+- Paddle 클래스 (paddle.js)
+- Brick 클래스 (brick.js 리팩토링)
+- 브랜치: refactor/game-entities-oop
+
+---
+
+### 이전 진행 상황
+- ✅ Stage 16: 9개 애니메이션 시스템 완성 (2025-10-28)
 
 ## 설계 결정 사항
 ### 콤보 타임아웃: 2초

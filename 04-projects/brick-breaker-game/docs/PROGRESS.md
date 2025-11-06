@@ -384,28 +384,11 @@ HTML5 Canvas를 사용한 벽돌깨기 게임 개발
     - 공 속도: ballSpeedX/Y에 배율 적용, setTimeout 후 원래 속도로 명시적 복원 필요
     - 생명: 즉시 lives++ 적용
 
-### 2025-10-29
-- **Stage 17 시작**: 코드 리팩토링 (모듈 분리)
-  - 목표: 2200줄 game.js를 기능별 모듈로 분리
-  - ES6 모듈 시스템 도입 (`type="module"`)
-- **모듈 추출 완료** (9/10):
-  1. constants.js (175 lines) - 모든 게임 상수 정의
-  2. audio.js (232 lines) - Web Audio API, BGM, 효과음, 볼륨 관리
-  3. i18n.js (80 lines) - 다국어 지원 시스템
-  4. theme.js (27 lines) - 4가지 컬러 테마 시스템
-  5. stats.js (60 lines) - 게임 통계 관리
-  6. input.js (68 lines) - 키보드/마우스 입력 처리 (콜백 패턴)
-  7. animations.js (269 lines) - 모든 애니메이션 효과
-  8. items.js (155 lines) - 아이템 시스템 (콜백 패턴)
-  9. bricks.js (106 lines) - 벽돌 생성/그리기/상태 관리
-- **game.js 크기 변화**: 2200 lines → 1250 lines (43% 감소)
-- **해결한 기술 이슈**:
-  - ES6 모듈 readonly 변수 문제 (setMuted 함수 사용)
-  - UTF-8 인코딩 반복 문제 (8개 파일 재작성)
-  - 애니메이션 배열 재할당 에러 (.length = 0 사용)
-  - ctx 매개변수 누락 (모든 draw 함수에 전달)
-- **Git 작업**: 10개 커밋 푸시 완료 (브랜치: refactor/stage-17-module-separation)
-- **남은 작업**: physics.js 추출, PR 생성 및 병합
+### 2025-10-28 ~ 2025-11-06
+- **Stage 17 완료** ✅: 모듈 분리 리팩토링
+  - 2200줄 game.js를 10개 ES6 모듈로 분리 (game.js 61% 감소)
+  - PR 병합 완료 (refactor/stage-17-module-separation)
+  - 상세 내용: REFACTORING_TODO.md 참조
 
 ---
 
