@@ -96,6 +96,8 @@ import {
     checkRectCircleCollision
 } from './physics.js';
 
+import { Ball } from './ball.js';
+
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
 // ========================================
@@ -104,11 +106,8 @@ import {
 let canvas;
 let ctx;
 
-// 공 관련 변수
-let ballX;
-let ballY;
-let ballSpeedX;
-let ballSpeedY;
+// 게임 객체 인스턴스
+let ball;
 
 // 패들 관련 변수
 let paddleX;
@@ -138,7 +137,6 @@ let effectTimers = {
 // ========================================
 let score = 0;
 let lives = 3;
-let ballLaunched = false; // 공 발사 여부
 
 // ========================================
 // 7단계: 게임 상태 관리
@@ -185,8 +183,7 @@ function applyItemEffect(itemType) {
         case 'ball_slow':
             activateEffect('ballSlow', itemType.duration);
             // 현재 공 속도 감소
-            ballSpeedX *= 0.7;
-            ballSpeedY *= 0.7;
+            ball.adjustSpeed(0.7);
             break;
 
         case 'extra_life':
@@ -216,10 +213,7 @@ function applyItemEffect(itemType) {
 // 공 속도 복원
 function restoreBallSpeed() {
     const settings = DIFFICULTY_SETTINGS[difficulty];
-    const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
-    const normalSpeed = settings.ballSpeed;
-    ballSpeedX = (ballSpeedX / speed) * normalSpeed;
-    ballSpeedY = (ballSpeedY / speed) * normalSpeed;
+    ball.restoreSpeed(settings.ballSpeed);
 }
 
 // 효과 비활성화
@@ -696,8 +690,9 @@ async function init() {
 
     console.log('✅ UI 요소 캐싱 완료:', Object.keys(UI).length, '개');
 
-    // 공 초기화
-    resetBall();
+    // 게임 객체 초기화
+    ball = new Ball();
+    ball.reset(difficulty);
 
     // 패들 초기화
     resetPaddle();
@@ -713,10 +708,7 @@ async function init() {
     // 입력 이벤트 핸들러 설정
     setupInputHandlers(canvas, {
         onSpacePress: () => {
-            if (!ballLaunched) {
-                ballLaunched = true;
-                console.log('공 발사!');
-            }
+            ball.launch();
         },
         onPausePress: () => {
             if (gameRunning) {
@@ -731,10 +723,7 @@ async function init() {
             }
         },
         onMouseClick: () => {
-            if (!ballLaunched) {
-                ballLaunched = true;
-                console.log('공 발사!');
-            }
+            ball.launch();
         }
     });
 
@@ -1050,14 +1039,7 @@ function gameWin() {
 
 // 공 위치 초기화
 function resetBall() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-
-    ballX = CANVAS.WIDTH / 2;
-    ballY = CANVAS.HEIGHT - 30;
-    ballSpeedX = settings.ballSpeed;
-    ballSpeedY = -settings.ballSpeed;
-    ballLaunched = false; // 공 발사 대기 상태로
-    console.log('공 초기화:', ballX, ballY, '속도:', settings.ballSpeed);
+    ball.reset(difficulty);
 }
 
 // 패들 위치 초기화
@@ -1083,9 +1065,10 @@ function collisionDetection() {
             // 벽돌이 존재하는 경우만 체크
             if (brick.status === 1) {
                 // 공이 벽돌과 충돌했는지 체크
-                if (checkRectCircleCollision(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, ballX, ballY, BALL.RADIUS)) {
+                const ballPos = ball.getPosition();
+                if (checkRectCircleCollision(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, ballPos.x, ballPos.y, ball.radius)) {
                     // 공 방향 반전
-                    ballSpeedY = -ballSpeedY;
+                    ball.speedY = -ball.speedY;
 
                     // 벽돌 파괴
                     brick.status = 0;
@@ -1160,41 +1143,17 @@ function update() {
     // 게임이 실행 중이 아니거나 일시정지 상태면 업데이트 안 함
     if (!gameRunning || gamePaused) return;
 
-    // 공이 발사되지 않았으면 패들 위에 고정
-    if (!ballLaunched) {
-        const settings = DIFFICULTY_SETTINGS[difficulty];
-        ballX = paddleX + settings.paddleWidth / 2;
-        ballY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10 - BALL.RADIUS - 1;
-        return; // 다른 로직 실행 안 함
-    }
+    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
+    const paddleWidth = getAnimatedPaddleWidth();
+    const wallCollision = ball.update(paddleX, paddleWidth);
 
-    // 공 이동
-    ballX += ballSpeedX;
-    ballY += ballSpeedY;
-
-    // 좌우 벽 충돌
-    if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
-        // 오른쪽 벽 충돌 - 위치 보정
-        ballX = CANVAS.WIDTH - BALL.RADIUS;
-        ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
-        playWallHitSound();
-    } else if (ballX - BALL.RADIUS < 0) {
-        // 왼쪽 벽 충돌 - 위치 보정
-        ballX = BALL.RADIUS;
-        ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
-        playWallHitSound();
-    }
-
-    // 상단 벽 충돌
-    if (ballY - BALL.RADIUS < 0) {
-        // 위치 보정
-        ballY = BALL.RADIUS;
-        ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
+    // 벽 충돌 사운드
+    if (wallCollision) {
         playWallHitSound();
     }
 
     // 하단 벽 충돌 (생명 감소)
-    if (ballY + BALL.RADIUS > CANVAS.HEIGHT) {
+    if (ball.checkBottomCollision()) {
         lives--;
         updateDisplay();
         startLifeAnimation(false);  // 생명 소실 애니메이션
@@ -1243,19 +1202,14 @@ function update() {
     }
 
     // 패들-공 충돌 감지
-    const paddleWidth = getAnimatedPaddleWidth(); // 애니메이션 적용된 패들 너비
     const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-    if (ballLaunched && checkRectCircleCollision(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT, ballX, ballY, BALL.RADIUS)) {
+    if (ball.checkPaddleCollision(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT)) {
         // 패들 충돌 사운드
         playPaddleHitSound();
 
-        // 패들의 어느 부분에 맞았는지에 따라 반사각 조정
-        const hitPos = (ballX - paddleX) / paddleWidth;
-        ballSpeedX = (hitPos - 0.5) * 10;
-        ballSpeedY = -Math.abs(ballSpeedY); // 항상 위로
-
         // 패들 히트 충격파 생성 (충돌 위치에서)
-        createPaddleHitWave(ballX, ballY);
+        const ballPos = ball.getPosition();
+        createPaddleHitWave(ballPos.x, ballPos.y);
     }
 
     // 패들 이동 (키보드)
@@ -1281,8 +1235,9 @@ function update() {
     updateBrickFragments();
 
     // 공 트레일 업데이트
-    if (ballLaunched) {
-        updateBallTrail(ballX, ballY);
+    if (ball.launched) {
+        const ballPos = ball.getPosition();
+        updateBallTrail(ballPos.x, ballPos.y);
     }
 
     // 점수 팝업 업데이트
@@ -1335,7 +1290,7 @@ function draw() {
     drawLevelTransition();
 
     // 공 발사 대기 중일 때 안내 문구 표시
-    if (!ballLaunched) {
+    if (!ball.launched) {
         ctx.fillStyle = '#ffffff';
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
@@ -1345,11 +1300,7 @@ function draw() {
 
 // 공 그리기
 function drawBall() {
-    ctx.beginPath();
-    ctx.arc(ballX, ballY, BALL.RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.BALL;
-    ctx.fill();
-    ctx.closePath();
+    ball.draw(ctx);
 }
 
 // 패들 그리기
