@@ -390,6 +390,13 @@ HTML5 Canvas를 사용한 벽돌깨기 게임 개발
   - PR 병합 완료 (refactor/stage-17-module-separation)
   - 상세 내용: REFACTORING_TODO.md 참조
 
+### 2025-11-06 ~ 2025-11-11
+- **Stage 18 완료** ✅: 게임 객체 OOP 리팩토링
+  - Ball, Paddle, Brick 클래스 기반 객체 전환
+  - 캡슐화 및 단일 책임 원칙 적용
+  - 브랜치: refactor/game-entities-oop
+  - 상세 내용: REFACTORING_TODO.md 참조
+
 ---
 
 ### 11단계: 아이템 시스템 (파워업)
