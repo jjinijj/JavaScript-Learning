@@ -83,10 +83,15 @@ export class Paddle {
         // 중심점을 유지하면서 패들 위치 조정
         this.x = this.animation.centerX - currentWidth / 2;
 
+        // 화면 경계 체크
+        this.x = Math.max(0, Math.min(this.x, CANVAS.WIDTH - currentWidth));
+
         // 애니메이션 완료
         if (progress >= 1) {
             const finalWidth = this.animation.targetWidth;
             this.x = this.animation.centerX - finalWidth / 2;
+            // 최종 위치에도 화면 경계 체크 적용
+            this.x = Math.max(0, Math.min(this.x, CANVAS.WIDTH - finalWidth));
             this.animation = null;
             console.log(`✅ 패들 크기 애니메이션 완료 (위치: ${this.x.toFixed(1)})`);
         }

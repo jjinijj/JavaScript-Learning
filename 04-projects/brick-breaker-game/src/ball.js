@@ -15,6 +15,7 @@ export class Ball {
         this.y = 0;
         this.speedX = 0;
         this.speedY = 0;
+        this.baseSpeed = 0; // 난이도 기준 속도 (효과 무시)
     }
 
     /**
@@ -29,6 +30,7 @@ export class Ball {
         this.y = CANVAS.HEIGHT - PADDLE.HEIGHT - 10 - this.radius - 1;
         this.speedX = settings.ballSpeed;
         this.speedY = -settings.ballSpeed;
+        this.baseSpeed = settings.ballSpeed; // 기준 속도 저장
         this.launched = false;
 
         console.log('공 초기화:', this.x, this.y, '속도:', settings.ballSpeed);
@@ -123,9 +125,22 @@ export class Ball {
 
         if (isColliding) {
             // 패들의 어느 부분에 맞았는지에 따라 반사각 조정
+            // hitPos: 0 (왼쪽 끝) ~ 0.5 (중앙) ~ 1 (오른쪽 끝)
             const hitPos = (this.x - paddleX) / paddleWidth;
-            this.speedX = (hitPos - 0.5) * 10;
-            this.speedY = -Math.abs(this.speedY); // 항상 위로
+
+            // 반사각 계산: -60도 ~ 0도 ~ +60도
+            const maxAngle = 60; // 최대 반사각 (도)
+            const angleInDegrees = (hitPos - 0.5) * 2 * maxAngle; // -60 ~ +60
+            const angleInRadians = angleInDegrees * Math.PI / 180;
+
+            // 현재 속도 크기 계산 (아이템 효과 적용된 상태)
+            const currentSpeed = Math.sqrt(this.speedX * this.speedX + this.speedY * this.speedY);
+
+            // 속도 벡터를 각도로 변환 (현재 속도 크기 유지)
+            // baseSpeed가 아닌 currentSpeed 사용 → 아이템 효과 유지
+            this.speedX = currentSpeed * Math.sin(angleInRadians);
+            this.speedY = -currentSpeed * Math.cos(angleInRadians); // 위쪽 방향 (음수)
+
             return true;
         }
 
@@ -143,10 +158,14 @@ export class Ball {
 
     /**
      * 공 속도 복원 (정규화)
-     * @param {number} targetSpeed - 목표 속도
+     * 아이템 효과 해제 시 난이도 기준 속도로 복원
+     * @param {number} targetSpeed - 목표 속도 (난이도 설정값)
      */
     restoreSpeed(targetSpeed) {
         const currentSpeed = Math.sqrt(this.speedX * this.speedX + this.speedY * this.speedY);
+        if (currentSpeed === 0) return; // 0으로 나누기 방지
+
+        // 현재 방향 유지하면서 속도 크기만 targetSpeed로 변경
         this.speedX = (this.speedX / currentSpeed) * targetSpeed;
         this.speedY = (this.speedY / currentSpeed) * targetSpeed;
     }
