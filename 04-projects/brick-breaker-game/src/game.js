@@ -5,7 +5,6 @@ import {
     CANVAS,
     COLORS,
     BALL,
-    PADDLE,
     BRICK,
     GAME,
     ITEM,
@@ -97,6 +96,7 @@ import {
 } from './physics.js';
 
 import { Ball } from './ball.js';
+import { Paddle } from './paddle.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -108,12 +108,9 @@ let ctx;
 
 // 게임 객체 인스턴스
 let ball;
-
-// 패들 관련 변수
-let paddleX;
+let paddle;
 
 // 애니메이션 상태 변수
-let paddleAnimation = null;     // 패들 애니메이션
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
 let levelTransition = null;     // 레벨 전환 애니메이션
@@ -282,19 +279,9 @@ function activateEffect(effectName, duration, currentWidth = null) {
     }
 }
 
-// 현재 패들 너비 계산 (효과 반영)
+// 현재 패들 너비 계산 (효과 반영) - paddle 메서드로 위임
 function getPaddleWidth() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    let width = settings.paddleWidth;
-
-    if (activeEffects.paddleExpanded) {
-        width *= 1.5;
-    }
-    if (activeEffects.paddleShrink) {
-        width *= 0.7;
-    }
-
-    return width;
+    return paddle.getWidth(activeEffects);
 }
 
 // ========================================
@@ -318,78 +305,26 @@ function getPaddleWidth() {
 // 애니메이션 함수 - 6. 패들 크기 변경 애니메이션
 // ========================================
 
-// 이징 함수들
-function easeOutElastic(t) {
-    const c4 = (2 * Math.PI) / 3;
-    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
-}
-
+// 이징 함수 (easeOutElastic은 paddle.js로 이동)
 function easeOutBack(t) {
     const c1 = ANIMATION.EASING.OVERSHOOT_STRENGTH;
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
-// 패들 크기 변경 애니메이션 시작
+// 패들 크기 변경 애니메이션 시작 (paddle 메서드로 위임)
 function startPaddleResizeAnimation(fromWidth, toWidth) {
-    // 패들 중심점 계산 (크기 변경 전)
-    const centerX = paddleX + fromWidth / 2;
-
-    paddleAnimation = {
-        startWidth: fromWidth,
-        targetWidth: toWidth,
-        centerX: centerX,  // 중심점 유지
-        startTime: Date.now(),
-        duration: ANIMATION.PADDLE_RESIZE.DURATION,
-        currentScale: 0  // 애니메이션 진행도 (0 시작)
-    };
-
-    console.log(`🎬 패들 크기 애니메이션 시작: ${fromWidth.toFixed(1)} → ${toWidth.toFixed(1)} (중심: ${centerX.toFixed(1)})`);
+    paddle.startResizeAnimation(fromWidth, toWidth);
 }
 
-// 패들 애니메이션 업데이트
+// 패들 애니메이션 업데이트 (paddle 메서드로 위임)
 function updatePaddleAnimation() {
-    if (!paddleAnimation) return;
-
-    const elapsed = Date.now() - paddleAnimation.startTime;
-    const progress = Math.min(elapsed / paddleAnimation.duration, 1);
-
-    // 이징 적용 (easeOutElastic)
-    const easedProgress = easeOutElastic(progress);
-
-    // 애니메이션 스케일 계산 (목표까지의 진행도)
-    paddleAnimation.currentScale = easedProgress;
-
-    // 현재 패들 너비 계산
-    const currentWidth = paddleAnimation.startWidth +
-                        (paddleAnimation.targetWidth - paddleAnimation.startWidth) * easedProgress;
-
-    // 중심점을 유지하면서 패들 위치 조정
-    paddleX = paddleAnimation.centerX - currentWidth / 2;
-
-    // 애니메이션 완료
-    if (progress >= 1) {
-        // 최종 위치 보정
-        const finalWidth = paddleAnimation.targetWidth;
-        paddleX = paddleAnimation.centerX - finalWidth / 2;
-        paddleAnimation = null;
-        console.log(`✅ 패들 크기 애니메이션 완료 (위치: ${paddleX.toFixed(1)})`);
-    }
+    paddle.update();
 }
 
-// 애니메이션이 적용된 패들 너비 가져오기
+// 애니메이션이 적용된 패들 너비 가져오기 (paddle 메서드로 위임)
 function getAnimatedPaddleWidth() {
-    const baseWidth = getPaddleWidth();
-
-    if (!paddleAnimation) {
-        return baseWidth;
-    }
-
-    // 애니메이션 중: 시작 너비에서 목표 너비로 보간
-    const animatedWidth = paddleAnimation.startWidth +
-                          (paddleAnimation.targetWidth - paddleAnimation.startWidth) * paddleAnimation.currentScale;
-
-    return animatedWidth;
+    return paddle.getAnimatedWidth(activeEffects);
 }
 
 // ========================================
@@ -694,8 +629,8 @@ async function init() {
     ball = new Ball();
     ball.reset(difficulty);
 
-    // 패들 초기화
-    resetPaddle();
+    paddle = new Paddle();
+    paddle.reset(difficulty);
 
     // 벽돌 초기화
     initBricks(difficulty);
@@ -718,9 +653,7 @@ async function init() {
         onMouseMove: (e) => {
             const paddleWidth = getAnimatedPaddleWidth();
             const relativeX = e.clientX - canvas.offsetLeft;
-            if (relativeX > paddleWidth / 2 && relativeX < CANVAS.WIDTH - paddleWidth / 2) {
-                paddleX = relativeX - paddleWidth / 2;
-            }
+            paddle.moveTo(relativeX, paddleWidth);
         },
         onMouseClick: () => {
             ball.launch();
@@ -873,7 +806,7 @@ function toggleFullscreen() {
 function resetItems() {
     resetItemsModule();  // 아이템 배열 초기화
     resetAnimations();  // 애니메이션 배열 초기화
-    paddleAnimation = null;
+    paddle.animation = null;  // 패들 애니메이션 초기화
     lifeAnimation = null;
     uiPopupAnimation = null;
     levelTransition = null;
@@ -1044,9 +977,7 @@ function resetBall() {
 
 // 패들 위치 초기화
 function resetPaddle() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    paddleX = (CANVAS.WIDTH - settings.paddleWidth) / 2;
-    console.log('패들 초기화:', paddleX, '너비:', settings.paddleWidth);
+    paddle.reset(difficulty);
 }
 
 // 벽돌 관련 함수 (bricks.js에서 import)
@@ -1145,7 +1076,7 @@ function update() {
 
     // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
     const paddleWidth = getAnimatedPaddleWidth();
-    const wallCollision = ball.update(paddleX, paddleWidth);
+    const wallCollision = ball.update(paddle.x, paddleWidth);
 
     // 벽 충돌 사운드
     if (wallCollision) {
@@ -1202,8 +1133,7 @@ function update() {
     }
 
     // 패들-공 충돌 감지
-    const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-    if (ball.checkPaddleCollision(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT)) {
+    if (ball.checkPaddleCollision(paddle.x, paddle.y, paddleWidth, paddle.height)) {
         // 패들 충돌 사운드
         playPaddleHitSound();
 
@@ -1213,17 +1143,17 @@ function update() {
     }
 
     // 패들 이동 (키보드)
-    if (isRightPressed() && paddleX < CANVAS.WIDTH - paddleWidth) {
-        paddleX += PADDLE.SPEED;
-    } else if (isLeftPressed() && paddleX > 0) {
-        paddleX -= PADDLE.SPEED;
+    if (isRightPressed()) {
+        paddle.move('right', paddleWidth);
+    } else if (isLeftPressed()) {
+        paddle.move('left', paddleWidth);
     }
 
     // 벽돌-공 충돌 감지
     collisionDetection();
 
     // 아이템 업데이트
-    updateItemsModule(paddleX, getPaddleWidth, applyItemEffect);
+    updateItemsModule(paddle.x, getPaddleWidth, applyItemEffect);
 
     // 아이템 애니메이션 업데이트
     updateItemAnimations();
@@ -1306,19 +1236,7 @@ function drawBall() {
 // 패들 그리기
 function drawPaddle() {
     const paddleWidth = getAnimatedPaddleWidth(); // 애니메이션 적용된 패들 너비
-    const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-
-    // 그라디언트 생성
-    const gradient = ctx.createLinearGradient(paddleX, 0, paddleX + paddleWidth, 0);
-    gradient.addColorStop(0, COLORS.PADDLE_START);
-    gradient.addColorStop(1, COLORS.PADDLE_END);
-
-    // 둥근 모서리 패들
-    ctx.beginPath();
-    ctx.roundRect(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT, 5);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.closePath();
+    paddle.draw(ctx, paddleWidth);
 }
 
 // 벽돌 그리기
