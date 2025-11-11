@@ -5,8 +5,6 @@ import {
     CANVAS,
     COLORS,
     BALL,
-    PADDLE,
-    BRICK,
     GAME,
     ITEM,
     ANIMATION,
@@ -84,17 +82,14 @@ import {
     resetItems as resetItemsModule
 } from './items.js';
 
-import {
-    bricks,
-    initBricks,
-    drawBricks,
-    checkAllBricksCleared,
-    getBrick
-} from './bricks.js';
+import { BrickManager } from './bricks.js';
 
 import {
     checkRectCircleCollision
 } from './physics.js';
+
+import { Ball } from './ball.js';
+import { Paddle } from './paddle.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -104,17 +99,12 @@ import {
 let canvas;
 let ctx;
 
-// 공 관련 변수
-let ballX;
-let ballY;
-let ballSpeedX;
-let ballSpeedY;
-
-// 패들 관련 변수
-let paddleX;
+// 게임 객체 인스턴스
+let ball;
+let paddle;
+let brickManager;
 
 // 애니메이션 상태 변수
-let paddleAnimation = null;     // 패들 애니메이션
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
 let levelTransition = null;     // 레벨 전환 애니메이션
@@ -138,7 +128,6 @@ let effectTimers = {
 // ========================================
 let score = 0;
 let lives = 3;
-let ballLaunched = false; // 공 발사 여부
 
 // ========================================
 // 7단계: 게임 상태 관리
@@ -185,8 +174,7 @@ function applyItemEffect(itemType) {
         case 'ball_slow':
             activateEffect('ballSlow', itemType.duration);
             // 현재 공 속도 감소
-            ballSpeedX *= 0.7;
-            ballSpeedY *= 0.7;
+            ball.adjustSpeed(0.7);
             break;
 
         case 'extra_life':
@@ -216,10 +204,7 @@ function applyItemEffect(itemType) {
 // 공 속도 복원
 function restoreBallSpeed() {
     const settings = DIFFICULTY_SETTINGS[difficulty];
-    const speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY);
-    const normalSpeed = settings.ballSpeed;
-    ballSpeedX = (ballSpeedX / speed) * normalSpeed;
-    ballSpeedY = (ballSpeedY / speed) * normalSpeed;
+    ball.restoreSpeed(settings.ballSpeed);
 }
 
 // 효과 비활성화
@@ -288,19 +273,9 @@ function activateEffect(effectName, duration, currentWidth = null) {
     }
 }
 
-// 현재 패들 너비 계산 (효과 반영)
+// 현재 패들 너비 계산 (효과 반영) - paddle 메서드로 위임
 function getPaddleWidth() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    let width = settings.paddleWidth;
-
-    if (activeEffects.paddleExpanded) {
-        width *= 1.5;
-    }
-    if (activeEffects.paddleShrink) {
-        width *= 0.7;
-    }
-
-    return width;
+    return paddle.getWidth(activeEffects);
 }
 
 // ========================================
@@ -324,78 +299,26 @@ function getPaddleWidth() {
 // 애니메이션 함수 - 6. 패들 크기 변경 애니메이션
 // ========================================
 
-// 이징 함수들
-function easeOutElastic(t) {
-    const c4 = (2 * Math.PI) / 3;
-    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
-}
-
+// 이징 함수 (easeOutElastic은 paddle.js로 이동)
 function easeOutBack(t) {
     const c1 = ANIMATION.EASING.OVERSHOOT_STRENGTH;
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
-// 패들 크기 변경 애니메이션 시작
+// 패들 크기 변경 애니메이션 시작 (paddle 메서드로 위임)
 function startPaddleResizeAnimation(fromWidth, toWidth) {
-    // 패들 중심점 계산 (크기 변경 전)
-    const centerX = paddleX + fromWidth / 2;
-
-    paddleAnimation = {
-        startWidth: fromWidth,
-        targetWidth: toWidth,
-        centerX: centerX,  // 중심점 유지
-        startTime: Date.now(),
-        duration: ANIMATION.PADDLE_RESIZE.DURATION,
-        currentScale: 0  // 애니메이션 진행도 (0 시작)
-    };
-
-    console.log(`🎬 패들 크기 애니메이션 시작: ${fromWidth.toFixed(1)} → ${toWidth.toFixed(1)} (중심: ${centerX.toFixed(1)})`);
+    paddle.startResizeAnimation(fromWidth, toWidth);
 }
 
-// 패들 애니메이션 업데이트
+// 패들 애니메이션 업데이트 (paddle 메서드로 위임)
 function updatePaddleAnimation() {
-    if (!paddleAnimation) return;
-
-    const elapsed = Date.now() - paddleAnimation.startTime;
-    const progress = Math.min(elapsed / paddleAnimation.duration, 1);
-
-    // 이징 적용 (easeOutElastic)
-    const easedProgress = easeOutElastic(progress);
-
-    // 애니메이션 스케일 계산 (목표까지의 진행도)
-    paddleAnimation.currentScale = easedProgress;
-
-    // 현재 패들 너비 계산
-    const currentWidth = paddleAnimation.startWidth +
-                        (paddleAnimation.targetWidth - paddleAnimation.startWidth) * easedProgress;
-
-    // 중심점을 유지하면서 패들 위치 조정
-    paddleX = paddleAnimation.centerX - currentWidth / 2;
-
-    // 애니메이션 완료
-    if (progress >= 1) {
-        // 최종 위치 보정
-        const finalWidth = paddleAnimation.targetWidth;
-        paddleX = paddleAnimation.centerX - finalWidth / 2;
-        paddleAnimation = null;
-        console.log(`✅ 패들 크기 애니메이션 완료 (위치: ${paddleX.toFixed(1)})`);
-    }
+    paddle.update();
 }
 
-// 애니메이션이 적용된 패들 너비 가져오기
+// 애니메이션이 적용된 패들 너비 가져오기 (paddle 메서드로 위임)
 function getAnimatedPaddleWidth() {
-    const baseWidth = getPaddleWidth();
-
-    if (!paddleAnimation) {
-        return baseWidth;
-    }
-
-    // 애니메이션 중: 시작 너비에서 목표 너비로 보간
-    const animatedWidth = paddleAnimation.startWidth +
-                          (paddleAnimation.targetWidth - paddleAnimation.startWidth) * paddleAnimation.currentScale;
-
-    return animatedWidth;
+    return paddle.getAnimatedWidth(activeEffects);
 }
 
 // ========================================
@@ -696,14 +619,16 @@ async function init() {
 
     console.log('✅ UI 요소 캐싱 완료:', Object.keys(UI).length, '개');
 
-    // 공 초기화
-    resetBall();
+    // 게임 객체 초기화
+    ball = new Ball();
+    ball.reset(difficulty);
 
-    // 패들 초기화
-    resetPaddle();
+    paddle = new Paddle();
+    paddle.reset(difficulty);
 
     // 벽돌 초기화
-    initBricks(difficulty);
+    brickManager = new BrickManager();
+    brickManager.init(difficulty);
 
     // 점수 및 생명 초기화
     score = 0;
@@ -713,10 +638,7 @@ async function init() {
     // 입력 이벤트 핸들러 설정
     setupInputHandlers(canvas, {
         onSpacePress: () => {
-            if (!ballLaunched) {
-                ballLaunched = true;
-                console.log('공 발사!');
-            }
+            ball.launch();
         },
         onPausePress: () => {
             if (gameRunning) {
@@ -726,15 +648,10 @@ async function init() {
         onMouseMove: (e) => {
             const paddleWidth = getAnimatedPaddleWidth();
             const relativeX = e.clientX - canvas.offsetLeft;
-            if (relativeX > paddleWidth / 2 && relativeX < CANVAS.WIDTH - paddleWidth / 2) {
-                paddleX = relativeX - paddleWidth / 2;
-            }
+            paddle.moveTo(relativeX, paddleWidth);
         },
         onMouseClick: () => {
-            if (!ballLaunched) {
-                ballLaunched = true;
-                console.log('공 발사!');
-            }
+            ball.launch();
         }
     });
 
@@ -884,7 +801,7 @@ function toggleFullscreen() {
 function resetItems() {
     resetItemsModule();  // 아이템 배열 초기화
     resetAnimations();  // 애니메이션 배열 초기화
-    paddleAnimation = null;
+    paddle.animation = null;  // 패들 애니메이션 초기화
     lifeAnimation = null;
     uiPopupAnimation = null;
     levelTransition = null;
@@ -927,7 +844,7 @@ function startGame() {
     updateDisplay();
 
     // 난이도에 따라 초기화
-    initBricks(difficulty);
+    brickManager.init(difficulty);
     resetBall();
     resetPaddle();
     resetItems();
@@ -979,7 +896,7 @@ function restartGame() {
     // 게임 요소 리셋
     resetBall();
     resetPaddle();
-    initBricks(difficulty);
+    brickManager.init(difficulty);
 
     // 게임 시작
     gameRunning = true;
@@ -1050,21 +967,12 @@ function gameWin() {
 
 // 공 위치 초기화
 function resetBall() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-
-    ballX = CANVAS.WIDTH / 2;
-    ballY = CANVAS.HEIGHT - 30;
-    ballSpeedX = settings.ballSpeed;
-    ballSpeedY = -settings.ballSpeed;
-    ballLaunched = false; // 공 발사 대기 상태로
-    console.log('공 초기화:', ballX, ballY, '속도:', settings.ballSpeed);
+    ball.reset(difficulty);
 }
 
 // 패들 위치 초기화
 function resetPaddle() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    paddleX = (CANVAS.WIDTH - settings.paddleWidth) / 2;
-    console.log('패들 초기화:', paddleX, '너비:', settings.paddleWidth);
+    paddle.reset(difficulty);
 }
 
 // 벽돌 관련 함수 (bricks.js에서 import)
@@ -1075,60 +983,54 @@ function resetPaddle() {
 
 // 벽돌-공 충돌 감지
 function collisionDetection() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    for (let c = 0; c < BRICK.COLS; c++) {
-        for (let r = 0; r < settings.brickRows; r++) {
-            const brick = bricks[c][r];
+    const ballPos = ball.getPosition();
 
-            // 벽돌이 존재하는 경우만 체크
-            if (brick.status === 1) {
-                // 공이 벽돌과 충돌했는지 체크
-                if (checkRectCircleCollision(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, ballX, ballY, BALL.RADIUS)) {
-                    // 공 방향 반전
-                    ballSpeedY = -ballSpeedY;
+    // BrickManager에서 충돌하는 벽돌 찾기
+    const brick = brickManager.checkBallBrickCollision(ballPos.x, ballPos.y, ball.radius, checkRectCircleCollision);
 
-                    // 벽돌 파괴
-                    brick.status = 0;
+    if (brick) {
+        // 공 방향 반전
+        ball.speedY = -ball.speedY;
 
-                    // 사운드 재생
-                    playBrickBreakSound();
+        // 벽돌 파괴 (BrickManager를 통해 관리)
+        brickManager.destroyBrick(brick);
 
-                    // 입자 효과 생성 (벽돌 중앙에서)
-                    const brickCenterX = brick.x + BRICK.WIDTH / 2;
-                    const brickCenterY = brick.y + BRICK.HEIGHT / 2;
-                    createParticles(brickCenterX, brickCenterY, COLORS.BRICK_COLORS[r]);
+        // 사운드 재생
+        playBrickBreakSound();
 
-                    // 벽돌 조각 애니메이션 생성
-                    createBrickFragments(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, COLORS.BRICK_COLORS[r]);
+        // 입자 효과 생성 (벽돌 중앙에서)
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+        createParticles(brickCenterX, brickCenterY, brick.color);
 
-                    // 점수 증가
-                    score += 10;
-                    updateDisplay();
+        // 벽돌 조각 애니메이션 생성
+        createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
 
-                    // 점수 팝업 생성
-                    createScorePopup(brickCenterX, brickCenterY, 10);
+        // 점수 증가
+        score += 10;
+        updateDisplay();
 
-                    // 통계 업데이트 (파괴한 벽돌 총 개수)
-                    updateStats({
-                        gameCompleted: false,
-                        score: 0,
-                        bricksDestroyed: 1
-                    });
-                    updateStatsDisplay();
+        // 점수 팝업 생성
+        createScorePopup(brickCenterX, brickCenterY, 10);
 
-                    console.log('벽돌 파괴:', c, r, '점수:', score);
+        // 통계 업데이트 (파괴한 벽돌 총 개수)
+        updateStats({
+            gameCompleted: false,
+            score: 0,
+            bricksDestroyed: 1
+        });
+        updateStatsDisplay();
 
-                    // 아이템 드롭 (확률적)
-                    if (Math.random() < ITEM.DROP_CHANCE) {
-                        createItem(brick.x + BRICK.WIDTH / 2, brick.y);
-                    }
+        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', score);
 
-                    // 게임 승리 확인 (모든 벽돌 파괴)
-                    if (checkAllBricksCleared(difficulty)) {
-                        gameWin();
-                    }
-                }
-            }
+        // 아이템 드롭 (확률적)
+        if (Math.random() < ITEM.DROP_CHANCE) {
+            createItem(brick.x + brick.width / 2, brick.y);
+        }
+
+        // 게임 승리 확인 (모든 벽돌 파괴)
+        if (brickManager.checkAllCleared()) {
+            gameWin();
         }
     }
 }
@@ -1160,41 +1062,17 @@ function update() {
     // 게임이 실행 중이 아니거나 일시정지 상태면 업데이트 안 함
     if (!gameRunning || gamePaused) return;
 
-    // 공이 발사되지 않았으면 패들 위에 고정
-    if (!ballLaunched) {
-        const settings = DIFFICULTY_SETTINGS[difficulty];
-        ballX = paddleX + settings.paddleWidth / 2;
-        ballY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10 - BALL.RADIUS - 1;
-        return; // 다른 로직 실행 안 함
-    }
+    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
+    const paddleWidth = getAnimatedPaddleWidth();
+    const wallCollision = ball.update(paddle.x, paddleWidth);
 
-    // 공 이동
-    ballX += ballSpeedX;
-    ballY += ballSpeedY;
-
-    // 좌우 벽 충돌
-    if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
-        // 오른쪽 벽 충돌 - 위치 보정
-        ballX = CANVAS.WIDTH - BALL.RADIUS;
-        ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
-        playWallHitSound();
-    } else if (ballX - BALL.RADIUS < 0) {
-        // 왼쪽 벽 충돌 - 위치 보정
-        ballX = BALL.RADIUS;
-        ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
-        playWallHitSound();
-    }
-
-    // 상단 벽 충돌
-    if (ballY - BALL.RADIUS < 0) {
-        // 위치 보정
-        ballY = BALL.RADIUS;
-        ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
+    // 벽 충돌 사운드
+    if (wallCollision) {
         playWallHitSound();
     }
 
     // 하단 벽 충돌 (생명 감소)
-    if (ballY + BALL.RADIUS > CANVAS.HEIGHT) {
+    if (ball.checkBottomCollision()) {
         lives--;
         updateDisplay();
         startLifeAnimation(false);  // 생명 소실 애니메이션
@@ -1243,33 +1121,27 @@ function update() {
     }
 
     // 패들-공 충돌 감지
-    const paddleWidth = getAnimatedPaddleWidth(); // 애니메이션 적용된 패들 너비
-    const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-    if (ballLaunched && checkRectCircleCollision(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT, ballX, ballY, BALL.RADIUS)) {
+    if (ball.checkPaddleCollision(paddle.x, paddle.y, paddleWidth, paddle.height)) {
         // 패들 충돌 사운드
         playPaddleHitSound();
 
-        // 패들의 어느 부분에 맞았는지에 따라 반사각 조정
-        const hitPos = (ballX - paddleX) / paddleWidth;
-        ballSpeedX = (hitPos - 0.5) * 10;
-        ballSpeedY = -Math.abs(ballSpeedY); // 항상 위로
-
         // 패들 히트 충격파 생성 (충돌 위치에서)
-        createPaddleHitWave(ballX, ballY);
+        const ballPos = ball.getPosition();
+        createPaddleHitWave(ballPos.x, ballPos.y);
     }
 
     // 패들 이동 (키보드)
-    if (isRightPressed() && paddleX < CANVAS.WIDTH - paddleWidth) {
-        paddleX += PADDLE.SPEED;
-    } else if (isLeftPressed() && paddleX > 0) {
-        paddleX -= PADDLE.SPEED;
+    if (isRightPressed()) {
+        paddle.move('right', paddleWidth);
+    } else if (isLeftPressed()) {
+        paddle.move('left', paddleWidth);
     }
 
     // 벽돌-공 충돌 감지
     collisionDetection();
 
     // 아이템 업데이트
-    updateItemsModule(paddleX, getPaddleWidth, applyItemEffect);
+    updateItemsModule(paddle.x, getPaddleWidth, applyItemEffect);
 
     // 아이템 애니메이션 업데이트
     updateItemAnimations();
@@ -1281,8 +1153,9 @@ function update() {
     updateBrickFragments();
 
     // 공 트레일 업데이트
-    if (ballLaunched) {
-        updateBallTrail(ballX, ballY);
+    if (ball.launched) {
+        const ballPos = ball.getPosition();
+        updateBallTrail(ballPos.x, ballPos.y);
     }
 
     // 점수 팝업 업데이트
@@ -1305,7 +1178,7 @@ function draw() {
     ctx.fillRect(0, 0, CANVAS.WIDTH, CANVAS.HEIGHT);
 
     // 벽돌 그리기
-    drawBricks(ctx, difficulty);
+    brickManager.draw(ctx);
 
     // 아이템 그리기 (애니메이션 적용)
     drawAnimatedItems(ctx);
@@ -1335,7 +1208,7 @@ function draw() {
     drawLevelTransition();
 
     // 공 발사 대기 중일 때 안내 문구 표시
-    if (!ballLaunched) {
+    if (!ball.launched) {
         ctx.fillStyle = '#ffffff';
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
@@ -1345,29 +1218,13 @@ function draw() {
 
 // 공 그리기
 function drawBall() {
-    ctx.beginPath();
-    ctx.arc(ballX, ballY, BALL.RADIUS, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.BALL;
-    ctx.fill();
-    ctx.closePath();
+    ball.draw(ctx);
 }
 
 // 패들 그리기
 function drawPaddle() {
     const paddleWidth = getAnimatedPaddleWidth(); // 애니메이션 적용된 패들 너비
-    const paddleY = CANVAS.HEIGHT - PADDLE.HEIGHT - 10;
-
-    // 그라디언트 생성
-    const gradient = ctx.createLinearGradient(paddleX, 0, paddleX + paddleWidth, 0);
-    gradient.addColorStop(0, COLORS.PADDLE_START);
-    gradient.addColorStop(1, COLORS.PADDLE_END);
-
-    // 둥근 모서리 패들
-    ctx.beginPath();
-    ctx.roundRect(paddleX, paddleY, paddleWidth, PADDLE.HEIGHT, 5);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-    ctx.closePath();
+    paddle.draw(ctx, paddleWidth);
 }
 
 // 벽돌 그리기

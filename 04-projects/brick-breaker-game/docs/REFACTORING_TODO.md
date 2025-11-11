@@ -15,18 +15,19 @@
   - **결과**: 2200 lines → ~850 lines (61% 감소)
 
 ## 2. 게임 객체 클래스화 (OOP)
-- [ ] **Ball, Paddle, Brick 객체지향 리팩토링** (진행 중 - Stage 18)
-  - [ ] `ball.js` - Ball 클래스
+- [x] **Ball, Paddle, Brick 객체지향 리팩토링** ✅ (Stage 18 완료)
+  - [x] `ball.js` - Ball 클래스 (178 lines)
     - 속성: x, y, speedX, speedY, radius, launched
-    - 메서드: update(), draw(), launch(), reset(), checkWallCollision()
-  - [ ] `paddle.js` - Paddle 클래스
-    - 속성: x, y, width, height, animation
-    - 메서드: update(), draw(), move(), reset(), getWidth()
-  - [ ] `brick.js` - Brick 클래스 (bricks.js 리팩토링)
-    - 속성: x, y, width, height, status, color, row, col
-    - 메서드: draw(), destroy(), isAlive()
-    - BrickManager 클래스: 벽돌 그리드 관리
-  - **목표**: 높은 결합도 해소, 캡슐화, 확장성 향상
+    - 메서드: update(), draw(), launch(), reset(), checkWallCollision(), checkPaddleCollision(), adjustSpeed(), restoreSpeed(), getPosition()
+  - [x] `paddle.js` - Paddle 클래스 (195 lines)
+    - 속성: x, y, width, height, speed, animation, baseWidth
+    - 메서드: update(), draw(), move(), moveTo(), reset(), startResizeAnimation(), getWidth(), getAnimatedWidth(), getPosition(), getBounds()
+  - [x] `bricks.js` - Brick 클래스 & BrickManager (171 lines, 완전 재작성)
+    - **Brick 클래스**: x, y, width, height, col, row, status, color
+    - 메서드: draw(), destroy(), isAlive(), getBounds()
+    - **BrickManager 클래스**: 1D 배열로 벽돌 그리드 관리
+    - 메서드: init(), draw(), checkBallBrickCollision(), destroyBrick(), checkAllCleared(), getBricks(), getAliveBricks()
+  - **결과**: 캡슐화 완료, 단일 책임 원칙 적용, 객체 참조 기반 설계
 
 ## 3. Update 함수 분리
 - [ ] **update() 함수 모듈화**
@@ -180,15 +181,179 @@
 
 ---
 
-### 🔄 Stage 18 예정 (2025-11-06~): 게임 객체 OOP 리팩토링
+### ✅ Stage 18 완료 (2025-11-06 ~ 2025-11-11): 게임 객체 OOP 리팩토링
 
 **목표**: Ball, Paddle, Brick을 클래스 기반 객체로 전환
 
-**계획**:
-- Ball 클래스 (ball.js)
-- Paddle 클래스 (paddle.js)
-- Brick 클래스 (brick.js 리팩토링)
+**결과**:
+- 3개 클래스 추출 완료
+- game.js에서 Ball, Paddle, BrickManager 인스턴스 사용
+- 커밋: 4개 (문서 업데이트, Ball, Paddle, Brick 각각)
+- 브랜치: refactor/game-entities-oop (푸시 완료)
+
+#### 추출된 클래스 (3개)
+
+1. **Ball 클래스** (ball.js, 178 lines)
+   - **속성**: x, y, speedX, speedY, radius, launched
+   - **메서드**:
+     - `update(paddleX, paddleWidth)` - 위치 업데이트, 벽 충돌 감지 반환
+     - `draw(ctx)` - 공 렌더링
+     - `launch()` - 공 발사
+     - `reset(difficulty)` - 난이도별 초기화
+     - `checkWallCollision()` - 벽 충돌 감지 및 위치 보정
+     - `checkPaddleCollision()` - 패들 충돌 감지 및 반사각 조정
+     - `adjustSpeed(multiplier)` - 속도 배율 적용 (슬로우/패스트 효과)
+     - `restoreSpeed(difficulty)` - 원래 속도 복원
+     - `getPosition()` - {x, y, radius} 반환
+   - **설계 개선**:
+     - PADDLE 상수 사용으로 위치 계산 일관성 확보
+     - `update()` 메서드가 충돌 정보 반환 (중복 호출 방지)
+     - 위치 보정 로직 캡슐화
+
+2. **Paddle 클래스** (paddle.js, 195 lines)
+   - **속성**: x, y, width, height, speed, animation, baseWidth
+   - **메서드**:
+     - `update()` - 애니메이션 상태 업데이트
+     - `draw(ctx)` - 패들 렌더링
+     - `move(direction)` - 좌우 이동 (-1: 왼쪽, 1: 오른쪽)
+     - `moveTo(x)` - 특정 위치로 이동 (마우스)
+     - `reset()` - 초기 위치
+     - `startResizeAnimation(centerX, targetWidth)` - 크기 변경 애니메이션
+     - `getWidth(activeEffects)` - 효과 적용 너비 계산
+     - `getAnimatedWidth(activeEffects)` - 애니메이션 중 너비 계산
+     - `getPosition()` - {x, y, width, height} 반환
+     - `getBounds()` - {x, y, width, height} 반환
+   - **설계 개선**:
+     - easeOutElastic 함수 포함 (애니메이션 전용)
+     - 애니메이션 상태를 Paddle 내부에서 관리
+     - 효과 플래그는 여전히 game.js에서 관리 (여러 엔티티 영향)
+
+3. **Brick 클래스 & BrickManager** (bricks.js, 171 lines, 완전 재작성)
+
+   **Brick 클래스**:
+   - **속성**: x, y, width, height, col, row, status, color
+   - **메서드**:
+     - `draw(ctx)` - 벽돌 렌더링
+     - `destroy()` - status = 0
+     - `isAlive()` - status === 1 확인
+     - `getBounds()` - {x, y, width, height} 반환
+
+   **BrickManager 클래스**:
+   - **데이터 구조 변경**: 2D 배열 `bricks[c][r]` → 1D 배열 `Brick[]`
+   - **속성**: bricks (1D 배열), cols, rows
+   - **메서드**:
+     - `init(difficulty)` - 난이도별 벽돌 생성
+     - `draw(ctx)` - 모든 살아있는 벽돌 렌더링
+     - `checkBallBrickCollision(ballX, ballY, ballRadius, checkCollision)` - 충돌 감지 위임
+     - `destroyBrick(brick)` - 벽돌 생명주기 관리 (이벤트/통계 확장 가능)
+     - `checkAllCleared()` - 게임 클리어 조건 확인
+     - `getBricks()` - 전체 벽돌 배열 반환
+     - `getAliveBricks()` - 살아있는 벽돌만 필터링
+   - **설계 개선**:
+     - 객체 참조 기반 (JavaScript 표준 패턴)
+     - 충돌 감지 함수를 콜백으로 받아 의존성 분리
+     - 벽돌 관리 책임을 BrickManager에 집중
+
+#### game.js 변경 사항
+
+**제거된 변수**:
+- `ballX, ballY, ballSpeedX, ballSpeedY, ballLaunched`
+- `paddleX, paddleAnimation`
+- `bricks` (2D 배열)
+
+**추가된 인스턴스**:
+```javascript
+import { Ball } from './ball.js';
+import { Paddle } from './paddle.js';
+import { BrickManager } from './bricks.js';
+
+const ball = new Ball();
+const paddle = new Paddle();
+const brickManager = new BrickManager();
+```
+
+**충돌 감지 간소화**:
+```javascript
+// Before: 중첩 for문 + 직접 배열 접근
+function collisionDetection() {
+    for (let c = 0; c < BRICK.COLS; c++) {
+        for (let r = 0; r < settings.brickRows; r++) {
+            const brick = bricks[c][r];
+            if (brick.status === 1) {
+                if (checkRectCircleCollision(...)) {
+                    // 효과 적용 코드...
+                }
+            }
+        }
+    }
+}
+
+// After: BrickManager 위임
+function collisionDetection() {
+    const ballPos = ball.getPosition();
+    const brick = brickManager.checkBallBrickCollision(
+        ballPos.x, ballPos.y, ball.radius,
+        checkRectCircleCollision
+    );
+    if (brick) {
+        ball.speedY = -ball.speedY;
+        brickManager.destroyBrick(brick);
+        // 효과 적용 코드...
+    }
+}
+```
+
+#### 해결한 기술 이슈
+
+1. **Ball 위치 계산 일관성 문제**
+   - **문제**: `reset()`과 `update()`에서 Y 위치 계산이 다름 (-30 vs -40)
+   - **원인**: 하드코딩된 값 사용
+   - **해결**: PADDLE 상수 import 후 일관된 계산식 사용
+   - **결과**: 모든 위치 계산이 `CANVAS.HEIGHT - PADDLE.HEIGHT - 10 - this.radius - 1`로 통일
+
+2. **Ball update() 중복 호출 문제**
+   - **문제**: `update()` 내부에서 `checkWallCollision()` 호출하지만 game.js에서도 호출
+   - **해결**: `update()` 메서드가 충돌 정보를 반환하도록 변경
+   - **결과**: 중복 호출 제거, 사운드 재생 타이밍 정확해짐
+
+3. **Paddle animation 변수 잔여 참조**
+   - **문제**: game.js 809번 줄에 `paddleAnimation = null` 잔존
+   - **해결**: `paddle.animation = null`로 변경
+   - **검증**: 모든 paddle 관련 변수 참조 확인 완료
+
+4. **객체 참조 vs 인덱스 설계 고민**
+   - **질문**: BrickManager가 brick 반환 후 다시 받아서 destroy하는 것이 비효율적인지?
+   - **답변**: JavaScript에서는 객체 참조가 가장 효율적
+     - 이미 찾은 객체를 바로 사용 (추가 탐색 불필요)
+     - 인덱스 방식은 `this.bricks[index]` 접근 비용 발생
+     - C#/C++ 표준 패턴과 동일
+   - **결론**: 현재 객체 참조 기반 설계가 최적
+
+#### 설계 원칙
+
+1. **캡슐화**: 각 클래스가 자신의 상태와 동작을 관리
+2. **단일 책임**: Ball(움직임/충돌), Paddle(조작/애니메이션), BrickManager(그리드 관리)
+3. **의존성 분리**: 콜백 패턴으로 충돌 감지 함수 전달
+4. **확장성**: BrickManager.destroyBrick()에서 이벤트/통계 추가 용이
+5. **표준 패턴**: JavaScript 객체 참조를 활용한 효율적 설계
+
+#### 효과 관리 결정 사항
+
+**게임 효과(activeEffects)는 game.js에서 계속 관리**:
+- **이유**:
+  - 효과가 여러 엔티티에 영향 (ball, paddle)
+  - 효과 간 상호작용 (slowBall ↔ fastBall 배타적)
+  - 타이머 동기화 (일시정지/재개 시 전체 관리)
+- **나중 고려**: Stage 19에서 EffectManager 분리 검토
+
+#### Git 작업
 - 브랜치: refactor/game-entities-oop
+- 커밋: 4개
+  1. 문서 업데이트 (Stage 17 완료 기록)
+  2. Ball 클래스 추출 (위치 계산 일관성 수정 포함)
+  3. Paddle 클래스 추출 (애니메이션 관리 포함)
+  4. Brick 클래스 & BrickManager 추출 (2D → 1D 배열 전환)
+- 푸시: origin/refactor/game-entities-oop 완료
 
 ---
 
