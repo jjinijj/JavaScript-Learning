@@ -61,20 +61,32 @@
 ---
 
 ## 버그 수정 목록
-- [ ] **패들이 화면 밖으로 나가는 문제**
-  - 화면 가장자리에서 확장 아이템 획득 시 패들이 화면 밖으로 나감
-  - 패들 위치 경계 체크 로직 추가 필요
+- [x] **패들이 화면 밖으로 나가는 문제** ✅ (2025-11-11)
+  - **문제**: 화면 가장자리에서 확장 아이템 획득 시 패들이 화면 밖으로 나감
+  - **해결**: paddle.js의 update() 메서드에 화면 경계 체크 추가
+  - **코드**: `this.x = Math.max(0, Math.min(this.x, CANVAS.WIDTH - currentWidth))`
+  - **적용**: 애니메이션 진행 중(87줄)과 완료 시(94줄) 모두 경계 체크
 
-- [ ] **패들 위치에 따른 공 속도 변경 문제**
-  - 현재: 패들 중앙으로 갈수록 속도가 느려지고, 바깥으로 갈수록 속도가 빨라짐 (의도하지 않은 동작)
-  - 개선: 패들 위치는 각도만 변경하고, 속도는 일정하게 유지
-  - 현재 코드:
+- [x] **패들 위치에 따른 공 속도 변경 문제** ✅ (2025-11-11)
+  - **문제**: 패들 중앙으로 갈수록 속도가 느려지고, 바깥으로 갈수록 속도가 빨라짐 (의도하지 않은 동작)
+  - **원인**: X속도만 변경하면 전체 속도 크기가 달라짐
+  - **기존 코드**:
     ```javascript
     const hitPos = (ballX - paddleX) / paddleWidth;
-    ballSpeedX = (hitPos - 0.5) * 10;  // 문제: X속도만 변경하면 전체 속도 변함
+    ballSpeedX = (hitPos - 0.5) * 10;  // 문제!
     ballSpeedY = -Math.abs(ballSpeedY);
     ```
-  - 해결: 각도로 속도 벡터 계산 후 일정한 크기로 정규화
+  - **해결**: 삼각함수를 사용해 각도만 변경하고 속도 크기 유지
+  - **신규 코드** (ball.js:126-145):
+    ```javascript
+    const hitPos = (ballX - paddleX) / paddleWidth; // 0~1
+    const angleInDegrees = (hitPos - 0.5) * 2 * 60; // -60~+60도
+    const angleInRadians = angleInDegrees * Math.PI / 180;
+    const currentSpeed = Math.sqrt(speedX² + speedY²);
+    speedX = currentSpeed * Math.sin(angleInRadians);
+    speedY = -currentSpeed * Math.cos(angleInRadians);
+    ```
+  - **추가 개선**: ball.js에 baseSpeed 속성 추가, restoreSpeed()에 0으로 나누기 방지
 
 ---
 
