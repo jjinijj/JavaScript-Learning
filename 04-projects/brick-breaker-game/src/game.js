@@ -5,7 +5,6 @@ import {
     CANVAS,
     COLORS,
     BALL,
-    BRICK,
     GAME,
     ITEM,
     ANIMATION,
@@ -83,13 +82,7 @@ import {
     resetItems as resetItemsModule
 } from './items.js';
 
-import {
-    bricks,
-    initBricks,
-    drawBricks,
-    checkAllBricksCleared,
-    getBrick
-} from './bricks.js';
+import { BrickManager } from './bricks.js';
 
 import {
     checkRectCircleCollision
@@ -109,6 +102,7 @@ let ctx;
 // 게임 객체 인스턴스
 let ball;
 let paddle;
+let brickManager;
 
 // 애니메이션 상태 변수
 let lifeAnimation = null;       // 생명력 애니메이션
@@ -633,7 +627,8 @@ async function init() {
     paddle.reset(difficulty);
 
     // 벽돌 초기화
-    initBricks(difficulty);
+    brickManager = new BrickManager();
+    brickManager.init(difficulty);
 
     // 점수 및 생명 초기화
     score = 0;
@@ -849,7 +844,7 @@ function startGame() {
     updateDisplay();
 
     // 난이도에 따라 초기화
-    initBricks(difficulty);
+    brickManager.init(difficulty);
     resetBall();
     resetPaddle();
     resetItems();
@@ -901,7 +896,7 @@ function restartGame() {
     // 게임 요소 리셋
     resetBall();
     resetPaddle();
-    initBricks(difficulty);
+    brickManager.init(difficulty);
 
     // 게임 시작
     gameRunning = true;
@@ -988,61 +983,54 @@ function resetPaddle() {
 
 // 벽돌-공 충돌 감지
 function collisionDetection() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
-    for (let c = 0; c < BRICK.COLS; c++) {
-        for (let r = 0; r < settings.brickRows; r++) {
-            const brick = bricks[c][r];
+    const ballPos = ball.getPosition();
 
-            // 벽돌이 존재하는 경우만 체크
-            if (brick.status === 1) {
-                // 공이 벽돌과 충돌했는지 체크
-                const ballPos = ball.getPosition();
-                if (checkRectCircleCollision(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, ballPos.x, ballPos.y, ball.radius)) {
-                    // 공 방향 반전
-                    ball.speedY = -ball.speedY;
+    // BrickManager에서 충돌하는 벽돌 찾기
+    const brick = brickManager.checkBallBrickCollision(ballPos.x, ballPos.y, ball.radius, checkRectCircleCollision);
 
-                    // 벽돌 파괴
-                    brick.status = 0;
+    if (brick) {
+        // 공 방향 반전
+        ball.speedY = -ball.speedY;
 
-                    // 사운드 재생
-                    playBrickBreakSound();
+        // 벽돌 파괴 (BrickManager를 통해 관리)
+        brickManager.destroyBrick(brick);
 
-                    // 입자 효과 생성 (벽돌 중앙에서)
-                    const brickCenterX = brick.x + BRICK.WIDTH / 2;
-                    const brickCenterY = brick.y + BRICK.HEIGHT / 2;
-                    createParticles(brickCenterX, brickCenterY, COLORS.BRICK_COLORS[r]);
+        // 사운드 재생
+        playBrickBreakSound();
 
-                    // 벽돌 조각 애니메이션 생성
-                    createBrickFragments(brick.x, brick.y, BRICK.WIDTH, BRICK.HEIGHT, COLORS.BRICK_COLORS[r]);
+        // 입자 효과 생성 (벽돌 중앙에서)
+        const brickCenterX = brick.x + brick.width / 2;
+        const brickCenterY = brick.y + brick.height / 2;
+        createParticles(brickCenterX, brickCenterY, brick.color);
 
-                    // 점수 증가
-                    score += 10;
-                    updateDisplay();
+        // 벽돌 조각 애니메이션 생성
+        createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
 
-                    // 점수 팝업 생성
-                    createScorePopup(brickCenterX, brickCenterY, 10);
+        // 점수 증가
+        score += 10;
+        updateDisplay();
 
-                    // 통계 업데이트 (파괴한 벽돌 총 개수)
-                    updateStats({
-                        gameCompleted: false,
-                        score: 0,
-                        bricksDestroyed: 1
-                    });
-                    updateStatsDisplay();
+        // 점수 팝업 생성
+        createScorePopup(brickCenterX, brickCenterY, 10);
 
-                    console.log('벽돌 파괴:', c, r, '점수:', score);
+        // 통계 업데이트 (파괴한 벽돌 총 개수)
+        updateStats({
+            gameCompleted: false,
+            score: 0,
+            bricksDestroyed: 1
+        });
+        updateStatsDisplay();
 
-                    // 아이템 드롭 (확률적)
-                    if (Math.random() < ITEM.DROP_CHANCE) {
-                        createItem(brick.x + BRICK.WIDTH / 2, brick.y);
-                    }
+        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', score);
 
-                    // 게임 승리 확인 (모든 벽돌 파괴)
-                    if (checkAllBricksCleared(difficulty)) {
-                        gameWin();
-                    }
-                }
-            }
+        // 아이템 드롭 (확률적)
+        if (Math.random() < ITEM.DROP_CHANCE) {
+            createItem(brick.x + brick.width / 2, brick.y);
+        }
+
+        // 게임 승리 확인 (모든 벽돌 파괴)
+        if (brickManager.checkAllCleared()) {
+            gameWin();
         }
     }
 }
@@ -1190,7 +1178,7 @@ function draw() {
     ctx.fillRect(0, 0, CANVAS.WIDTH, CANVAS.HEIGHT);
 
     // 벽돌 그리기
-    drawBricks(ctx, difficulty);
+    brickManager.draw(ctx);
 
     // 아이템 그리기 (애니메이션 적용)
     drawAnimatedItems(ctx);
