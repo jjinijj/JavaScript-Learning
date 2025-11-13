@@ -54,20 +54,131 @@
   - `BallSlowed` - 슬로우 아이템 효과 상태
   - 현재: if문으로 ballLaunched 체크
 
-## 5. 애니메이션 시스템 개선
-- [ ] **레벨 전환 애니메이션 리팩토링**
+## 5. 애니메이션 시스템 통합 (OOP + 효율성)
+- [ ] **AnimationManager 클래스 생성**
+  - 현재: 3개의 전역 변수 + 각각의 update/draw 함수들
+    - `lifeAnimation` + `startLifeAnimation()`, `updateLifeAnimation()`, `getLifeDisplayOffset()`
+    - `levelTransition` + `startLevelTransition()`, `updateLevelTransition()`, `drawLevelTransition()`
+    - `uiPopupAnimation` + `startUIPopupAnimation()`, `updateUIPopupAnimation()`, `hideUIPopupAnimation()`
+  - 개선: 하나의 AnimationManager 클래스로 통합
+    - 속성: `lifeAnimation`, `levelTransition`, `uiPopupAnimation`
+    - 메서드: 각 애니메이션 start/update/draw 통합
+  - **효율성 개선**: update() 함수에서 12개 함수 호출 → 1개 클래스 메서드 호출
+  - **목표**: 활성화된 애니메이션만 업데이트 (불필요한 호출 제거)
+
+- [ ] **레벨 전환 애니메이션 Promise 기반 개선**
   - 현재: if-else로 phase 체크 (fadeIn, display, fadeOut)
-  - 개선: 콜백 체인 또는 Promise 기반 시퀀스
+  - 개선: Promise 체인 또는 async/await 기반 시퀀스
   - 예시:
     ```javascript
-    fadeIn()
-      .then(() => display())
-      .then(() => fadeOut())
-      .then(() => callback());
+    async startLevelTransition(text) {
+      await this.fadeIn();
+      await this.display(text);
+      await this.fadeOut();
+    }
     ```
 
-## 6. 추가 개선 사항
-- [ ] (여기에 추가 항목 작성)
+## 6. 충돌 감지 시스템 리팩토링 (단일 책임 원칙)
+- [ ] **CollisionDetector 클래스 생성**
+  - 현재 문제: `collisionDetection()` 함수가 너무 많은 책임
+    - 충돌 감지 + 공 상태 변경 + 벽돌 파괴 + 사운드 + 애니메이션 + 점수 + UI 업데이트 + 아이템 드롭 + 게임 승리 체크
+    - 50줄의 단일 함수에 10개 이상의 작업 혼재
+  - 개선: 충돌 감지와 이벤트 처리 분리
+    ```javascript
+    class CollisionDetector {
+      detectBallBrickCollision(ball, brickManager) { ... }
+      detectBallPaddleCollision(ball, paddle) { ... }
+      detectItemPaddleCollision(items, paddle) { ... }
+    }
+    ```
+  - 게임 로직은 GameController에서 처리
+  - **효과**: 테스트 용이성, 재사용성, 코드 가독성 향상
+
+## 7. UI 관리 시스템 (OOP + 성능 최적화)
+- [ ] **UIManager 클래스 생성**
+  - 현재: UI 관련 함수들이 game.js에 산재
+    - `updateDisplay()` - 점수/생명 표시 업데이트
+    - `updateStatsDisplay()` - 통계 표시 업데이트
+    - `updateVolumeUI()` - 볼륨 UI 업데이트
+    - `updateMuteButton()` - 음소거 버튼 업데이트
+  - 개선: UIManager 클래스로 통합
+    ```javascript
+    class UIManager {
+      constructor() {
+        this.elements = {};
+        this.cachedLives = -1;  // 캐싱
+      }
+      updateScore(score) { ... }
+      updateLives(lives) { ... }  // 변경 시에만 업데이트
+      updateStats(stats) { ... }
+    }
+    ```
+
+- [ ] **updateDisplay() 성능 최적화**
+  - 현재 문제: 매 프레임 불필요한 문자열 생성
+    ```javascript
+    // ❌ BAD: 생명이 안 변해도 매번 재생성
+    let livesText = '';
+    for (let i = 0; i < gameState.lives; i++) {
+      livesText += '❤️';
+    }
+    ```
+  - 개선: 변경 감지 + 캐싱
+    ```javascript
+    // ✅ GOOD: 생명 변경 시에만 업데이트
+    if (gameState.lives !== this.cachedLives) {
+      UI.lives.textContent = '❤️'.repeat(gameState.lives);
+      this.cachedLives = gameState.lives;
+    }
+    ```
+  - **효과**: 불필요한 DOM 조작 제거
+
+## 8. 불필요한 래퍼 함수 제거 (코드 간결화)
+- [ ] **간접 호출 제거**
+  - 현재: 단순 전달만 하는 래퍼 함수들
+    ```javascript
+    // ❌ 불필요한 래퍼
+    function startPaddleResizeAnimation(fromWidth, toWidth) {
+      paddle.startResizeAnimation(fromWidth, toWidth);
+    }
+
+    function updatePaddleAnimation() {
+      paddle.update();
+    }
+    ```
+  - 개선: 직접 호출
+    ```javascript
+    // ✅ 직접 호출
+    paddle.startResizeAnimation(fromWidth, toWidth);
+    paddle.update();
+    ```
+  - **효과**: 함수 호출 오버헤드 제거, 코드 간결화
+
+## 9. GameController 클래스 생성 (최종 통합)
+- [ ] **전체 게임 흐름을 하나의 컨트롤러로 통합**
+  - 현재: game.js에 개별 함수들로 분산
+    - `startGame()`, `togglePause()`, `restartGame()`, `showMenu()`, `gameWin()` 등
+  - 개선: GameController 클래스
+    ```javascript
+    class GameController {
+      constructor(canvas, ctx) {
+        this.ball = new Ball();
+        this.paddle = new Paddle();
+        this.brickManager = new BrickManager();
+        this.animationManager = new AnimationManager();
+        this.uiManager = new UIManager();
+        this.collisionDetector = new CollisionDetector();
+      }
+
+      start() { ... }
+      pause() { ... }
+      restart() { ... }
+      update() { ... }
+      draw() { ... }
+    }
+    ```
+  - **State Pattern 준비**: 이후 섹션 4 (공 상태 패턴) 적용 시 자연스럽게 통합
+  - **효과**: 게임 전체 흐름의 명확한 진입점, 의존성 관리 용이
 
 ---
 
@@ -147,8 +258,17 @@
 
 ## 참고
 - 현재 game.js 파일 크기: 1146 lines (Stage 19 후)
-- 리팩토링 우선순위: 1 → 2 → 4 → 3 → 5
-  - 이유: 클래스화(2) 후 상태패턴(4) 적용이 자연스럽고, 그 후 update 분리(3)가 단순해짐
+- **리팩토링 우선순위 (업데이트)**:
+  - **1단계**: 섹션 1, 2 완료 ✅ (모듈 분리, 클래스화)
+  - **2단계**: 섹션 5 → 8 (효율성 + OOP 개선)
+    - 5: AnimationManager 클래스 (효율성 + 통합)
+    - 6: CollisionDetector 클래스 (단일 책임)
+    - 7: UIManager 클래스 + 성능 최적화
+    - 8: 불필요한 래퍼 함수 제거 (간결화)
+  - **3단계**: 섹션 3 → Update 함수 분리 (2단계 후 자연스럽게 적용)
+  - **4단계**: 섹션 4 → State Pattern (공 상태)
+  - **5단계**: 섹션 9 → GameController 통합 (최종)
+  - **이유**: OOP + 효율성 개선을 먼저 하면, update 분리와 State Pattern이 자연스럽게 적용됨
 - Stage 16 완료 (2025-10-28): 9개 애니메이션 시스템
 - Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리
 - Stage 18 완료 (2025-11-06 ~ 2025-11-11): OOP 리팩토링
