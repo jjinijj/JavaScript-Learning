@@ -667,10 +667,53 @@ let paddleHitWaves = [];
 - **상태**: PR 병합 완료
 - **상세**: REFACTORING_TODO.md 참조
 
-### Stage 19 (예정): 게임 시스템 OOP
-- **목표**: GameState, EffectManager 클래스 분리
-- **계획**: 점수/생명 관리, 아이템 효과 관리 캡슐화
-- **브랜치**: refactor/game-systems-oop (예정)
+### Stage 19 (완료 ✅): 게임 시스템 리팩토링
+- **목표**: GameState 추출 및 EffectManager 클래스 분리
+- **결과**: 2개 시스템 추출 완료, game.js 약 120줄 감소
+- **브랜치**: refactor/game-systems-oop
+
+#### ✅ 완료: gameState 추출
+- **파일**: gameState.js (76 lines)
+- **방식**: 클래스가 아닌 단순 객체 + 헬퍼 메서드
+- **속성**: score, lives, difficulty, running, paused
+- **메서드**:
+  - `isPlaying()` - 게임 진행 중 체크
+  - `start()`, `stop()` - 게임 시작/정지
+  - `pause()`, `resume()`, `togglePause()` - 일시정지 제어
+  - `reset()` - 상태 초기화
+- **클래스가 아닌 단순 객체를 선택한 이유**:
+  - ❌ 클래스: 168줄, 복잡한 메서드, 인스턴스 생성 필요 (`new GameState()`)
+  - ✅ 단순 객체: 76줄, 간결한 코드, import 후 즉시 사용 가능
+  - 게임 상태는 하나만 필요 (싱글톤) → 클래스의 이점 없음
+  - 단순한 값 저장 위주 → 클래스의 복잡도가 과도함
+  - Ball, Paddle처럼 여러 인스턴스가 필요하지 않음
+- **개선 사항**:
+  - GAME.INITIAL_LIVES 상수 추가 (constants.js)
+  - 하드코딩된 lives = 3 제거
+  - 싱글톤 패턴 (export된 객체 하나만 존재)
+  - game.js 약 50줄 감소
+
+#### ✅ 완료: EffectManager 추출
+- **파일**: effectManager.js (165 lines)
+- **방식**: 클래스 (타이머 관리 필요)
+- **속성**: activeEffects, timers, callbacks
+- **메서드**:
+  - `setCallbacks()` - 콜백 함수 설정 (초기화 시 1회)
+  - `activate(effectName, duration, currentWidth)` - 효과 활성화
+  - `deactivate(effectName)` - 효과 비활성화
+  - `isActive(effectName)` - 효과 활성화 여부 확인
+  - `getActiveEffects()` - activeEffects 객체 반환
+  - `reset()` - 모든 효과 초기화
+- **클래스를 선택한 이유** (gameState와 다른 이유):
+  - ✅ 복잡한 타이머 관리 로직 필요
+  - ✅ 여러 메서드가 상태 공유 (activeEffects, timers)
+  - ✅ 콜백 패턴으로 의존성 주입
+  - ✅ 패들 확대/축소 상호 배타적 처리
+- **개선 사항**:
+  - activeEffects, effectTimers 변수 제거
+  - activateEffect(), deactivateEffect() 함수 제거
+  - 콜백 방식으로 의존성 분리 (효율성)
+  - game.js 약 70줄 감소
 
 ---
 

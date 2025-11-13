@@ -100,6 +100,48 @@
 
 ## 진행 상황
 
+### ✅ Stage 16 완료 (2025-10-28): 애니메이션 시스템
+
+**목표**: 게임 내 다양한 시각적 애니메이션 효과 추가
+
+**결과**:
+- 9개 애니메이션 시스템 완성
+- 사용자 경험 향상을 위한 피드백 애니메이션 구현
+
+#### 완성된 애니메이션 (4개)
+1. **벽돌 파괴 애니메이션** - 조각 흩어지기, 중력 효과, 회전
+2. **공 트레일 효과** - 잔상 효과, 점진적 투명화
+3. **파워업 아이템 애니메이션** - 회전, 펄스, 발광 효과
+4. **점수 팝업 애니메이션** - 금색 텍스트, 위로 떠오름, 크기 증가
+
+#### 미완성 애니메이션 (5개)
+5. **패들 히트 효과** - 계획만 수립
+6. **패들 크기 변경 애니메이션** - 계획만 수립
+7. **생명력 회복/소실 애니메이션** - 계획만 수립
+8. **일시정지 UI 팝업** - 계획만 수립
+9. **레벨 전환 애니메이션** - 계획만 수립
+
+#### ⚠️ 폐기된 애니메이션 (1개)
+10. **콤보 효과 애니메이션** - 계획 후 폐기
+    - **폐기 이유**:
+      - 게임 템포를 방해하는 시각적 복잡성
+      - 단순한 벽돌깨기 게임에 불필요한 요소
+      - 핵심 게임플레이에 집중하기 위해 제거
+    - **계획했던 내용**: 연속으로 벽돌 3개 이상 깰 때 콤보 표시, 2초 타임아웃
+
+#### 설계 결정 사항
+
+**콤보 타임아웃 계산 (폐기됨)**:
+- Normal 난이도 기준 공 속도: 5 px/frame (60 FPS)
+- 패들(y=575) → 벽돌(y=80) 거리: 약 495px
+- 최소 왕복 시간: 495÷5÷60 = 1.65초
+- 실제 시간: 벽 튕김 고려 시 1.5~2.5초
+- **결론**: 평균 왕복 시간 2초를 타임아웃으로 설정하려 했으나, 콤보 시스템 자체를 폐기함
+
+**상세 내용**: PROGRESS.md Stage 16 참조
+
+---
+
 ### ✅ Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리 리팩토링
 
 **목표**: 2200줄 game.js를 기능별 독립 모듈로 분리
@@ -369,14 +411,158 @@ function collisionDetection() {
 
 ---
 
-### 이전 진행 상황
-- ✅ Stage 16: 9개 애니메이션 시스템 완성 (2025-10-28)
+### ✅ Stage 19 완료 (2025-11-13): 게임 시스템 리팩토링
 
-## 설계 결정 사항
-### 콤보 타임아웃: 2초
-**이유**:
-- Normal 난이도 기준 공 속도: 5 px/frame (60 FPS)
-- 패들(y=575) → 벽돌(y=80) 거리: 약 495px
-- 최소 왕복 시간: 495÷5÷60 = 1.65초
-- 실제 시간: 벽 튕김 고려 시 1.5~2.5초
-- **결론**: 평균 왕복 시간 2초를 타임아웃으로 설정하여 자연스러운 콤보 유지 가능
+**목표**: GameState 추출 및 EffectManager 클래스 분리
+
+**결과**:
+- ✅ gameState 추출 완료 (76 lines)
+- ✅ EffectManager 클래스 추출 완료 (165 lines)
+- game.js 약 120줄 감소
+
+#### ✅ 완료: gameState 추출
+
+**파일**: gameState.js (76 lines)
+
+**방식 결정: 클래스 vs 단순 객체**
+- ❌ **클래스 방식 폐기** (168 lines):
+  - 복잡한 메서드, 인스턴스 생성 필요 (`new GameState()`)
+  - 게임 상태는 하나만 필요 (싱글톤) → 클래스의 이점 없음
+  - 단순한 값 저장 위주 → 클래스의 복잡도가 과도함
+
+- ✅ **단순 객체 + 헬퍼 메서드 선택** (76 lines):
+  - 간결한 코드, import 후 즉시 사용 가능
+  - `export const gameState = { ... }` → 싱글톤 자동 보장
+  - Ball, Paddle처럼 여러 인스턴스가 필요하지 않음
+
+**비교**:
+```javascript
+// 클래스 방식 (폐기)
+import { GameState } from './gameState.js';
+let gameState = new GameState();  // 선언 필요
+gameState.start();
+
+// 단순 객체 방식 (채택)
+import { gameState } from './gameState.js';
+gameState.start();  // 즉시 사용
+```
+
+**구현 내용**:
+- **속성**: score, lives, difficulty, running, paused
+- **메서드**:
+  - `isPlaying()` - 게임 진행 중 체크 (`running && !paused`)
+  - `start()`, `stop()` - 게임 시작/정지
+  - `pause()`, `resume()`, `togglePause()` - 일시정지 제어
+  - `reset()` - 상태 초기화 (점수/생명만)
+
+**개선 사항**:
+- GAME.INITIAL_LIVES 상수 추가 (constants.js)
+- 하드코딩된 `lives = 3` 모두 제거
+- game.js 약 50줄 감소 (1275 → 1226 lines)
+
+**설계 원칙**:
+- **싱글톤 패턴**: export된 객체 하나만 존재
+- **캡슐화**: 헬퍼 메서드로 상태 변경 로직 숨김
+- **간결성**: 클래스보다 단순하면서도 구조화된 접근 제공
+
+#### ✅ 완료: EffectManager 추출
+
+**파일**: effectManager.js (165 lines)
+
+**방식 결정: 클래스 선택 (gameState와 다른 이유)**
+- ✅ **클래스 방식 선택**:
+  - 복잡한 타이머 관리 로직 필요
+  - 여러 메서드가 상태 공유 (activeEffects, timers)
+  - 콜백 패턴으로 의존성 주입
+  - 패들 확대/축소 상호 배타적 처리
+
+- ❌ **단순 객체는 부적합**:
+  - setTimeout 타이머 여러 개 관리
+  - 콜백 함수 저장 및 호출
+  - 효과별 복잡한 생명주기 관리
+
+**구현 내용**:
+
+**클래스 구조**:
+```javascript
+export class EffectManager {
+    constructor() {
+        this.activeEffects = { paddleExpanded, ballSlow, paddleShrink };
+        this.timers = { paddleExpanded, ballSlow, paddleShrink };
+        this.callbacks = { getPaddleWidth, getAnimatedPaddleWidth, ... };
+    }
+
+    setCallbacks(callbacks);              // 콜백 함수 설정
+    activate(effectName, duration, currentWidth);  // 효과 활성화
+    deactivate(effectName);               // 효과 비활성화
+    isActive(effectName);                 // 활성화 여부
+    getActiveEffects();                   // activeEffects 반환
+    reset();                              // 모든 효과 초기화
+}
+```
+
+**콜백 패턴 설계**:
+```javascript
+// 초기화 시 한 번만 콜백 설정
+effectManager.setCallbacks({
+    getPaddleWidth: getPaddleWidth,
+    getAnimatedPaddleWidth: getAnimatedPaddleWidth,
+    startPaddleAnimation: startPaddleResizeAnimation,
+    restoreBallSpeed: restoreBallSpeed
+});
+
+// 사용 시 간결하게 호출
+effectManager.activate('paddleExpanded', 10000, currentWidth);
+```
+
+**콜백 방식 선택 이유**:
+- **효율성**: 초기화 1회 vs 호출마다 콜백 전달 (매번 객체 생성 방지)
+- **성능**: 참조 유지 vs 반복 할당/해제 (가비지 컬렉터 부담 감소)
+- **가독성**: 호출 코드가 간결
+- **안정성**: 콜백 누락 불가능
+
+**game.js 변경 사항**:
+
+**제거된 코드**:
+```javascript
+// 제거됨
+let activeEffects = { ... };
+let effectTimers = { ... };
+function activateEffect() { ... }      // ~70줄
+function deactivateEffect() { ... }    // ~20줄
+```
+
+**추가된 코드**:
+```javascript
+// 추가됨
+import { EffectManager } from './effectManager.js';
+let effectManager;
+
+// init() 함수에서
+effectManager = new EffectManager();
+effectManager.setCallbacks({ ... });
+
+// 사용
+effectManager.activate('ballSlow', 10000);
+effectManager.isActive('paddleShrink');
+effectManager.reset();
+```
+
+**개선 사항**:
+- activeEffects, effectTimers 변수 제거
+- activateEffect(), deactivateEffect() 함수 제거 (~90줄)
+- 타이머 관리 로직 캡슐화
+- 패들 효과 상호 배타 처리 간소화
+- game.js 약 70줄 감소
+
+**설계 원칙**:
+- **캡슐화**: 타이머와 효과 상태를 클래스 내부에서 관리
+- **의존성 분리**: 콜백 패턴으로 game.js 함수 주입
+- **단일 책임**: 효과 관리만 담당
+- **확장성**: 새로운 효과 추가 용이
+
+#### Git 작업
+- 브랜치: refactor/game-systems-oop
+- 커밋 예정: EffectManager 추출
+
+---

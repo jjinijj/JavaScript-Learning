@@ -51,7 +51,8 @@ export const BRICK = {
 
 // 게임 관련 상수
 export const GAME = {
-    MAX_LIVES: 5  // 최대 생명
+    INITIAL_LIVES: 3,  // 초기 생명
+    MAX_LIVES: 5       // 최대 생명
 };
 
 // 아이템 시스템

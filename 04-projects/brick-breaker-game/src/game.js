@@ -90,6 +90,8 @@ import {
 
 import { Ball } from './ball.js';
 import { Paddle } from './paddle.js';
+import { gameState } from './gameState.js';
+import { EffectManager } from './effectManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -103,42 +105,18 @@ let ctx;
 let ball;
 let paddle;
 let brickManager;
+let effectManager;
 
 // 애니메이션 상태 변수
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
 let levelTransition = null;     // 레벨 전환 애니메이션
 
-// 활성화된 효과들
-let activeEffects = {
-    paddleExpanded: false,
-    ballSlow: false,
-    paddleShrink: false
-};
-
-// 효과 타이머 ID 저장
-let effectTimers = {
-    paddleExpanded: null,
-    ballSlow: null,
-    paddleShrink: null
-};
-
 // ========================================
-// 6단계: 점수 및 생명 시스템
+// 6단계: 게임 상태 (gameState.js에서 import)
 // ========================================
-let score = 0;
-let lives = 3;
-
-// ========================================
-// 7단계: 게임 상태 관리
-// ========================================
-let gameRunning = false;  // 게임 진행 중
-let gamePaused = false;   // 일시정지
-
-// ========================================
-// 8단계: 난이도 및 통계 시스템
-// ========================================
-let difficulty = 'normal'; // 난이도
+// gameState는 별도 파일에서 관리
+// effectManager는 EffectManager 인스턴스로 관리
 
 // DOM 요소 캐싱
 const UI = {};
@@ -165,21 +143,21 @@ function applyItemEffect(itemType) {
             const currentWidthBeforeExpand = getAnimatedPaddleWidth();
 
             // 패들 축소 효과가 활성화되어 있으면 취소
-            if (activeEffects.paddleShrink) {
-                deactivateEffect('paddleShrink');
+            if (effectManager.isActive('paddleShrink')) {
+                effectManager.deactivate('paddleShrink');
             }
-            activateEffect('paddleExpanded', itemType.duration, currentWidthBeforeExpand);
+            effectManager.activate('paddleExpanded', itemType.duration, currentWidthBeforeExpand);
             break;
 
         case 'ball_slow':
-            activateEffect('ballSlow', itemType.duration);
+            effectManager.activate('ballSlow', itemType.duration);
             // 현재 공 속도 감소
             ball.adjustSpeed(0.7);
             break;
 
         case 'extra_life':
-            if (lives < GAME.MAX_LIVES) {
-                lives++;
+            if (gameState.lives < GAME.MAX_LIVES) {
+                gameState.lives++;
                 updateDisplay();
                 startLifeAnimation(true);  // 생명 획득 애니메이션
                 console.log('❤️ 생명 +1');
@@ -193,89 +171,23 @@ function applyItemEffect(itemType) {
             const currentWidthBeforeShrink = getAnimatedPaddleWidth();
 
             // 패들 확대 효과가 활성화되어 있으면 취소
-            if (activeEffects.paddleExpanded) {
-                deactivateEffect('paddleExpanded');
+            if (effectManager.isActive('paddleExpanded')) {
+                effectManager.deactivate('paddleExpanded');
             }
-            activateEffect('paddleShrink', itemType.duration, currentWidthBeforeShrink);
+            effectManager.activate('paddleShrink', itemType.duration, currentWidthBeforeShrink);
             break;
     }
 }
 
 // 공 속도 복원
 function restoreBallSpeed() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
+    const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
     ball.restoreSpeed(settings.ballSpeed);
-}
-
-// 효과 비활성화
-function deactivateEffect(effectName) {
-    // 타이머 취소
-    if (effectTimers[effectName]) {
-        clearTimeout(effectTimers[effectName]);
-        effectTimers[effectName] = null;
-    }
-
-    // 효과 플래그 false
-    activeEffects[effectName] = false;
-
-    // 공 속도 복원 (ballSlow인 경우)
-    if (effectName === 'ballSlow') {
-        restoreBallSpeed();
-    }
-
-    console.log(`⏰ ${effectName} 비활성화됨`);
-}
-
-// 효과 활성화
-function activateEffect(effectName, duration, currentWidth = null) {
-    // 패들 크기 변경 효과인 경우 애니메이션 시작
-    const isPaddleEffect = (effectName === 'paddleExpanded' || effectName === 'paddleShrink');
-
-    // 현재 너비: 전달받은 값이 있으면 사용, 없으면 현재 애니메이션 적용된 너비
-    const oldWidth = isPaddleEffect ? (currentWidth !== null ? currentWidth : getAnimatedPaddleWidth()) : 0;
-
-    // 이미 활성화된 효과는 타이머만 갱신
-    if (effectTimers[effectName]) {
-        clearTimeout(effectTimers[effectName]);
-    }
-
-    activeEffects[effectName] = true;
-    console.log(`⏰ ${effectName} 활성화 (${duration}ms)`);
-
-    // 패들 크기 변경 애니메이션 시작
-    if (isPaddleEffect) {
-        const newWidth = getPaddleWidth();  // 효과 적용 후 목표 너비
-        startPaddleResizeAnimation(oldWidth, newWidth);
-    }
-
-    // duration 후 효과 제거
-    if (duration) {
-        effectTimers[effectName] = setTimeout(() => {
-            // 패들 크기 복원 애니메이션
-            if (isPaddleEffect) {
-                const beforeWidth = getAnimatedPaddleWidth();  // 현재 애니메이션 적용된 너비
-                activeEffects[effectName] = false;
-                const afterWidth = getPaddleWidth();  // 효과 해제 후 목표 너비
-                startPaddleResizeAnimation(beforeWidth, afterWidth);
-            } else {
-                activeEffects[effectName] = false;
-            }
-
-            effectTimers[effectName] = null;
-
-            // 공 속도 복원 (ballSlow인 경우)
-            if (effectName === 'ballSlow') {
-                restoreBallSpeed();
-            }
-
-            console.log(`⏰ ${effectName} 종료`);
-        }, duration);
-    }
 }
 
 // 현재 패들 너비 계산 (효과 반영) - paddle 메서드로 위임
 function getPaddleWidth() {
-    return paddle.getWidth(activeEffects);
+    return paddle.getWidth(effectManager.getActiveEffects());
 }
 
 // ========================================
@@ -318,7 +230,7 @@ function updatePaddleAnimation() {
 
 // 애니메이션이 적용된 패들 너비 가져오기 (paddle 메서드로 위임)
 function getAnimatedPaddleWidth() {
-    return paddle.getAnimatedWidth(activeEffects);
+    return paddle.getAnimatedWidth(effectManager.getActiveEffects());
 }
 
 // ========================================
@@ -621,18 +533,26 @@ async function init() {
 
     // 게임 객체 초기화
     ball = new Ball();
-    ball.reset(difficulty);
+    ball.reset(gameState.difficulty);
 
     paddle = new Paddle();
-    paddle.reset(difficulty);
+    paddle.reset(gameState.difficulty);
 
     // 벽돌 초기화
     brickManager = new BrickManager();
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
 
-    // 점수 및 생명 초기화
-    score = 0;
-    lives = 3;
+    // 효과 매니저 초기화
+    effectManager = new EffectManager();
+    effectManager.setCallbacks({
+        getPaddleWidth: getPaddleWidth,
+        getAnimatedPaddleWidth: getAnimatedPaddleWidth,
+        startPaddleAnimation: startPaddleResizeAnimation,
+        restoreBallSpeed: restoreBallSpeed
+    });
+
+    // 게임 상태 초기화
+    gameState.reset();
     updateDisplay();
 
     // 입력 이벤트 핸들러 설정
@@ -641,7 +561,7 @@ async function init() {
             ball.launch();
         },
         onPausePress: () => {
-            if (gameRunning) {
+            if (gameState.running) {
                 togglePause();
             }
         },
@@ -763,7 +683,7 @@ function handleMuteToggle() {
 
     // 음소거 해제 시 게임 상태에 따라 적절한 BGM 재생
     if (!muted) {
-        if (gameRunning) {
+        if (gameState.running) {
             playGameBGM();
         } else {
             playMenuBGM();
@@ -811,20 +731,8 @@ function resetItems() {
         UI.lives.classList.remove('life-gain', 'life-loss');
     }
 
-    // 모든 타이머 취소
-    Object.keys(effectTimers).forEach(key => {
-        if (effectTimers[key]) {
-            clearTimeout(effectTimers[key]);
-            effectTimers[key] = null;
-        }
-    });
-
-    // 효과 플래그 초기화
-    activeEffects = {
-        paddleExpanded: false,
-        ballSlow: false,
-        paddleShrink: false
-    };
+    // 효과 초기화 (effectManager로 위임)
+    effectManager.reset();
 }
 
 // 게임 시작
@@ -836,21 +744,19 @@ function startGame() {
     playClickSound();
 
     // 난이도 가져오기
-    difficulty = UI.difficultySelect.value;
+    gameState.difficulty = UI.difficultySelect.value;
 
     // 게임 상태 초기화
-    score = 0;
-    lives = 3;
+    gameState.reset();
     updateDisplay();
 
     // 난이도에 따라 초기화
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
     resetBall();
     resetPaddle();
     resetItems();
 
-    gameRunning = true;
-    gamePaused = false;
+    gameState.start();
 
     // 시작 화면 페이드 아웃
     hideUIPopupAnimation(UI.startScreen);
@@ -858,16 +764,16 @@ function startGame() {
     // 게임 BGM 재생
     playGameBGM();
 
-    console.log('게임 시작! 난이도:', difficulty);
+    console.log('게임 시작! 난이도:', gameState.difficulty);
 }
 
 // 일시정지 토글
 function togglePause() {
-    if (!gameRunning) return;
+    if (!gameState.running) return;
 
-    gamePaused = !gamePaused;
+    gameState.togglePause();
 
-    if (gamePaused) {
+    if (gameState.paused) {
         UI.pauseScreen.classList.remove('hidden');
         startUIPopupAnimation(UI.pauseScreen);
         console.log('일시정지');
@@ -889,18 +795,16 @@ function restartGame() {
     resetItems();
 
     // 게임 상태 초기화
-    score = 0;
-    lives = 3;
+    gameState.reset();
     updateDisplay();
 
     // 게임 요소 리셋
     resetBall();
     resetPaddle();
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
 
     // 게임 시작
-    gameRunning = true;
-    gamePaused = false;
+    gameState.start();
 
     // 게임 BGM 재생
     playGameBGM();
@@ -913,8 +817,7 @@ function showMenu() {
     // UI 클릭 사운드
     playClickSound();
 
-    gameRunning = false;
-    gamePaused = false;
+    gameState.stop();
 
     // 다른 화면들 즉시 숨김
     UI.pauseScreen.classList.add('hidden');
@@ -934,8 +837,8 @@ function showMenu() {
 
 // 게임 승리 (모든 벽돌 파괴)
 function gameWin() {
-    // 게임 일시정지 (gameRunning은 유지하여 애니메이션 계속 실행)
-    gamePaused = true;
+    // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
+    gameState.pause();
 
     // BGM 정지
     stopBGM();
@@ -946,10 +849,10 @@ function gameWin() {
     // 레벨 전환 애니메이션 시작 (VICTORY!)
     startLevelTransition('VICTORY!', () => {
         // 애니메이션 완료 후 게임 완전히 중지
-        gameRunning = false;
+        gameState.stop();
 
         // UI 표시
-        UI.winFinalScore.textContent = score;
+        UI.winFinalScore.textContent = gameState.score;
         UI.winScreen.classList.remove('hidden');
         startUIPopupAnimation(UI.winScreen);
     });
@@ -957,22 +860,22 @@ function gameWin() {
     // 통계 업데이트
     updateStats({
         gameCompleted: true,
-        score: score,
+        score: gameState.score,
         bricksDestroyed: 0
     });
     updateStatsDisplay();
 
-    console.log('게임 승리! 최종 점수:', score);
+    console.log('게임 승리! 최종 점수:', gameState.score);
 }
 
 // 공 위치 초기화
 function resetBall() {
-    ball.reset(difficulty);
+    ball.reset(gameState.difficulty);
 }
 
 // 패들 위치 초기화
 function resetPaddle() {
-    paddle.reset(difficulty);
+    paddle.reset(gameState.difficulty);
 }
 
 // 벽돌 관련 함수 (bricks.js에서 import)
@@ -1007,7 +910,7 @@ function collisionDetection() {
         createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
 
         // 점수 증가
-        score += 10;
+        gameState.score += 10;
         updateDisplay();
 
         // 점수 팝업 생성
@@ -1021,7 +924,7 @@ function collisionDetection() {
         });
         updateStatsDisplay();
 
-        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', score);
+        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', gameState.score);
 
         // 아이템 드롭 (확률적)
         if (Math.random() < ITEM.DROP_CHANCE) {
@@ -1041,11 +944,11 @@ function collisionDetection() {
 // 화면 표시 업데이트
 function updateDisplay() {
     // 점수 표시
-    UI.score.textContent = score;
+    UI.score.textContent = gameState.score;
 
     // 생명 표시 (하트 이모지)
     let livesText = '';
-    for (let i = 0; i < lives; i++) {
+    for (let i = 0; i < gameState.lives; i++) {
         livesText += '❤️';
     }
     UI.lives.textContent = livesText;
@@ -1059,8 +962,8 @@ function update() {
     // 레벨 전환 애니메이션은 항상 업데이트
     updateLevelTransition();
 
-    // 게임이 실행 중이 아니거나 일시정지 상태면 업데이트 안 함
-    if (!gameRunning || gamePaused) return;
+    // 게임이 진행 중이 아니면 업데이트 안 함
+    if (!gameState.isPlaying()) return;
 
     // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
     const paddleWidth = getAnimatedPaddleWidth();
@@ -1073,13 +976,13 @@ function update() {
 
     // 하단 벽 충돌 (생명 감소)
     if (ball.checkBottomCollision()) {
-        lives--;
+        gameState.lives--;
         updateDisplay();
         startLifeAnimation(false);  // 생명 소실 애니메이션
 
-        if (lives <= 0) {
-            // 게임 일시정지 (gameRunning은 유지하여 애니메이션 계속 실행)
-            gamePaused = true;
+        if (gameState.lives <= 0) {
+            // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
+            gameState.pause();
 
             // BGM 정지
             stopBGM();
@@ -1090,10 +993,10 @@ function update() {
             // 레벨 전환 애니메이션 시작 (GAME OVER)
             startLevelTransition('GAME OVER', () => {
                 // 애니메이션 완료 후 게임 완전히 중지
-                gameRunning = false;
+                gameState.stop();
 
                 // UI 표시
-                UI.finalScore.textContent = score;
+                UI.finalScore.textContent = gameState.score;
                 UI.highScore.textContent = getStats().bestScore;
                 UI.gameOverScreen.classList.remove('hidden');
                 startUIPopupAnimation(UI.gameOverScreen);
@@ -1102,12 +1005,12 @@ function update() {
             // 통계 업데이트
             updateStats({
                 gameCompleted: true,
-                score: score,
+                score: gameState.score,
                 bricksDestroyed: 0
             });
             updateStatsDisplay();
 
-            console.log('게임 오버! 최종 점수:', score, '총 게임 수:', getStats().totalGames);
+            console.log('게임 오버! 최종 점수:', gameState.score, '총 게임 수:', getStats().totalGames);
         } else {
             // 생명 손실 사운드
             playLifeLostSound();
@@ -1116,7 +1019,7 @@ function update() {
             resetBall();
             resetPaddle();
             resetItems();  // 아이템 및 효과 초기화
-            console.log('생명 감소. 남은 생명:', lives);
+            console.log('생명 감소. 남은 생명:', gameState.lives);
         }
     }
 
