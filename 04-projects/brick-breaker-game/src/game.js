@@ -90,6 +90,7 @@ import {
 
 import { Ball } from './ball.js';
 import { Paddle } from './paddle.js';
+import { gameState } from './gameState.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -124,59 +125,9 @@ let effectTimers = {
 };
 
 // ========================================
-// 6단계: 게임 상태 (단순 객체 + 헬퍼 메서드)
+// 6단계: 게임 상태 (gameState.js에서 import)
 // ========================================
-const gameState = {
-    score: 0,
-    lives: GAME.INITIAL_LIVES,
-    difficulty: 'normal',
-    running: false,
-    paused: false,
-
-    // 게임 진행 중인지 체크 (running && !paused)
-    isPlaying() {
-        return this.running && !this.paused;
-    },
-
-    // 게임 시작
-    start() {
-        this.running = true;
-        this.paused = false;
-    },
-
-    // 게임 정지
-    stop() {
-        this.running = false;
-        this.paused = false;
-    },
-
-    // 일시정지
-    pause() {
-        if (this.running) {
-            this.paused = true;
-        }
-    },
-
-    // 재개
-    resume() {
-        if (this.running) {
-            this.paused = false;
-        }
-    },
-
-    // 일시정지 토글
-    togglePause() {
-        if (this.running) {
-            this.paused = !this.paused;
-        }
-    },
-
-    // 상태 초기화 (점수/생명만)
-    reset() {
-        this.score = 0;
-        this.lives = GAME.INITIAL_LIVES;
-    }
-};
+// gameState는 별도 파일에서 관리
 
 // DOM 요소 캐싱
 const UI = {};

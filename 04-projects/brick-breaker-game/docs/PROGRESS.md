@@ -667,10 +667,38 @@ let paddleHitWaves = [];
 - **상태**: PR 병합 완료
 - **상세**: REFACTORING_TODO.md 참조
 
-### Stage 19 (예정): 게임 시스템 OOP
-- **목표**: GameState, EffectManager 클래스 분리
-- **계획**: 점수/생명 관리, 아이템 효과 관리 캡슐화
-- **브랜치**: refactor/game-systems-oop (예정)
+### Stage 19 (진행 중): 게임 시스템 리팩토링
+- **목표**: GameState 추출 및 EffectManager 클래스 분리
+- **현재 진행 상황**:
+  - ✅ gameState 추출 (단순 객체 + 헬퍼 메서드 방식)
+  - 🔄 EffectManager 클래스 분리 (진행 예정)
+- **브랜치**: refactor/game-systems-oop
+
+#### ✅ 완료: gameState 추출
+- **파일**: gameState.js (76 lines)
+- **방식**: 클래스가 아닌 단순 객체 + 헬퍼 메서드
+- **속성**: score, lives, difficulty, running, paused
+- **메서드**:
+  - `isPlaying()` - 게임 진행 중 체크
+  - `start()`, `stop()` - 게임 시작/정지
+  - `pause()`, `resume()`, `togglePause()` - 일시정지 제어
+  - `reset()` - 상태 초기화
+- **클래스가 아닌 단순 객체를 선택한 이유**:
+  - ❌ 클래스: 168줄, 복잡한 메서드, 인스턴스 생성 필요 (`new GameState()`)
+  - ✅ 단순 객체: 76줄, 간결한 코드, import 후 즉시 사용 가능
+  - 게임 상태는 하나만 필요 (싱글톤) → 클래스의 이점 없음
+  - 단순한 값 저장 위주 → 클래스의 복잡도가 과도함
+  - Ball, Paddle처럼 여러 인스턴스가 필요하지 않음
+- **개선 사항**:
+  - GAME.INITIAL_LIVES 상수 추가 (constants.js)
+  - 하드코딩된 lives = 3 제거
+  - 싱글톤 패턴 (export된 객체 하나만 존재)
+  - game.js 약 50줄 감소
+
+#### 🔄 예정: EffectManager 추출
+- **목표**: 아이템 효과 관리 로직을 별도 클래스로 분리
+- **현재 문제**: activeEffects, effectTimers 등이 game.js에 산재
+- **계획**: EffectManager 클래스로 타이머 관리 및 효과 적용 캡슐화
 
 ---
 
