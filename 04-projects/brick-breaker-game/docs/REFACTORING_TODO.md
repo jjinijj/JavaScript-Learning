@@ -411,13 +411,14 @@ function collisionDetection() {
 
 ---
 
-### 🔄 Stage 19 진행 중 (2025-11-13~): 게임 시스템 리팩토링
+### ✅ Stage 19 완료 (2025-11-13): 게임 시스템 리팩토링
 
 **목표**: GameState 추출 및 EffectManager 클래스 분리
 
-**현재 상황**:
-- ✅ gameState 추출 완료
-- 🔄 EffectManager 클래스 분리 예정
+**결과**:
+- ✅ gameState 추출 완료 (76 lines)
+- ✅ EffectManager 클래스 추출 완료 (165 lines)
+- game.js 약 120줄 감소
 
 #### ✅ 완료: gameState 추출
 
@@ -464,30 +465,104 @@ gameState.start();  // 즉시 사용
 - **캡슐화**: 헬퍼 메서드로 상태 변경 로직 숨김
 - **간결성**: 클래스보다 단순하면서도 구조화된 접근 제공
 
-#### 🔄 예정: EffectManager 추출
+#### ✅ 완료: EffectManager 추출
 
-**현재 문제**:
-- `activeEffects`, `effectTimers` 객체가 game.js에 산재
-- `activateEffect()`, `deactivateEffect()` 함수가 복잡한 타이머 관리
-- 패들/공 효과가 상호 배타적인데 로직이 분산됨
+**파일**: effectManager.js (165 lines)
 
-**계획**:
-- EffectManager 클래스로 타이머 관리 및 효과 적용 캡슐화
-- activeEffects와 effectTimers를 클래스 내부로 이동
-- 패들 확대/축소 상호 배타 로직을 메서드로 캡슐화
+**방식 결정: 클래스 선택 (gameState와 다른 이유)**
+- ✅ **클래스 방식 선택**:
+  - 복잡한 타이머 관리 로직 필요
+  - 여러 메서드가 상태 공유 (activeEffects, timers)
+  - 콜백 패턴으로 의존성 주입
+  - 패들 확대/축소 상호 배타적 처리
 
-**예상 구조**:
+- ❌ **단순 객체는 부적합**:
+  - setTimeout 타이머 여러 개 관리
+  - 콜백 함수 저장 및 호출
+  - 효과별 복잡한 생명주기 관리
+
+**구현 내용**:
+
+**클래스 구조**:
 ```javascript
-class EffectManager {
-    activate(effectName, duration);
-    deactivate(effectName);
-    isActive(effectName);
-    reset();
+export class EffectManager {
+    constructor() {
+        this.activeEffects = { paddleExpanded, ballSlow, paddleShrink };
+        this.timers = { paddleExpanded, ballSlow, paddleShrink };
+        this.callbacks = { getPaddleWidth, getAnimatedPaddleWidth, ... };
+    }
+
+    setCallbacks(callbacks);              // 콜백 함수 설정
+    activate(effectName, duration, currentWidth);  // 효과 활성화
+    deactivate(effectName);               // 효과 비활성화
+    isActive(effectName);                 // 활성화 여부
+    getActiveEffects();                   // activeEffects 반환
+    reset();                              // 모든 효과 초기화
 }
 ```
 
+**콜백 패턴 설계**:
+```javascript
+// 초기화 시 한 번만 콜백 설정
+effectManager.setCallbacks({
+    getPaddleWidth: getPaddleWidth,
+    getAnimatedPaddleWidth: getAnimatedPaddleWidth,
+    startPaddleAnimation: startPaddleResizeAnimation,
+    restoreBallSpeed: restoreBallSpeed
+});
+
+// 사용 시 간결하게 호출
+effectManager.activate('paddleExpanded', 10000, currentWidth);
+```
+
+**콜백 방식 선택 이유**:
+- **효율성**: 초기화 1회 vs 호출마다 콜백 전달 (매번 객체 생성 방지)
+- **성능**: 참조 유지 vs 반복 할당/해제 (가비지 컬렉터 부담 감소)
+- **가독성**: 호출 코드가 간결
+- **안정성**: 콜백 누락 불가능
+
+**game.js 변경 사항**:
+
+**제거된 코드**:
+```javascript
+// 제거됨
+let activeEffects = { ... };
+let effectTimers = { ... };
+function activateEffect() { ... }      // ~70줄
+function deactivateEffect() { ... }    // ~20줄
+```
+
+**추가된 코드**:
+```javascript
+// 추가됨
+import { EffectManager } from './effectManager.js';
+let effectManager;
+
+// init() 함수에서
+effectManager = new EffectManager();
+effectManager.setCallbacks({ ... });
+
+// 사용
+effectManager.activate('ballSlow', 10000);
+effectManager.isActive('paddleShrink');
+effectManager.reset();
+```
+
+**개선 사항**:
+- activeEffects, effectTimers 변수 제거
+- activateEffect(), deactivateEffect() 함수 제거 (~90줄)
+- 타이머 관리 로직 캡슐화
+- 패들 효과 상호 배타 처리 간소화
+- game.js 약 70줄 감소
+
+**설계 원칙**:
+- **캡슐화**: 타이머와 효과 상태를 클래스 내부에서 관리
+- **의존성 분리**: 콜백 패턴으로 game.js 함수 주입
+- **단일 책임**: 효과 관리만 담당
+- **확장성**: 새로운 효과 추가 용이
+
 #### Git 작업
 - 브랜치: refactor/game-systems-oop
-- 커밋 예정: gameState 추출, EffectManager 추출
+- 커밋 예정: EffectManager 추출
 
 ---

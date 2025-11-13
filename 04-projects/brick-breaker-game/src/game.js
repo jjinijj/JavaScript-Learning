@@ -91,6 +91,7 @@ import {
 import { Ball } from './ball.js';
 import { Paddle } from './paddle.js';
 import { gameState } from './gameState.js';
+import { EffectManager } from './effectManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -104,30 +105,18 @@ let ctx;
 let ball;
 let paddle;
 let brickManager;
+let effectManager;
 
 // 애니메이션 상태 변수
 let lifeAnimation = null;       // 생명력 애니메이션
 let uiPopupAnimation = null;    // UI 팝업 애니메이션
 let levelTransition = null;     // 레벨 전환 애니메이션
 
-// 활성화된 효과들
-let activeEffects = {
-    paddleExpanded: false,
-    ballSlow: false,
-    paddleShrink: false
-};
-
-// 효과 타이머 ID 저장
-let effectTimers = {
-    paddleExpanded: null,
-    ballSlow: null,
-    paddleShrink: null
-};
-
 // ========================================
 // 6단계: 게임 상태 (gameState.js에서 import)
 // ========================================
 // gameState는 별도 파일에서 관리
+// effectManager는 EffectManager 인스턴스로 관리
 
 // DOM 요소 캐싱
 const UI = {};
@@ -154,14 +143,14 @@ function applyItemEffect(itemType) {
             const currentWidthBeforeExpand = getAnimatedPaddleWidth();
 
             // 패들 축소 효과가 활성화되어 있으면 취소
-            if (activeEffects.paddleShrink) {
-                deactivateEffect('paddleShrink');
+            if (effectManager.isActive('paddleShrink')) {
+                effectManager.deactivate('paddleShrink');
             }
-            activateEffect('paddleExpanded', itemType.duration, currentWidthBeforeExpand);
+            effectManager.activate('paddleExpanded', itemType.duration, currentWidthBeforeExpand);
             break;
 
         case 'ball_slow':
-            activateEffect('ballSlow', itemType.duration);
+            effectManager.activate('ballSlow', itemType.duration);
             // 현재 공 속도 감소
             ball.adjustSpeed(0.7);
             break;
@@ -182,10 +171,10 @@ function applyItemEffect(itemType) {
             const currentWidthBeforeShrink = getAnimatedPaddleWidth();
 
             // 패들 확대 효과가 활성화되어 있으면 취소
-            if (activeEffects.paddleExpanded) {
-                deactivateEffect('paddleExpanded');
+            if (effectManager.isActive('paddleExpanded')) {
+                effectManager.deactivate('paddleExpanded');
             }
-            activateEffect('paddleShrink', itemType.duration, currentWidthBeforeShrink);
+            effectManager.activate('paddleShrink', itemType.duration, currentWidthBeforeShrink);
             break;
     }
 }
@@ -196,75 +185,9 @@ function restoreBallSpeed() {
     ball.restoreSpeed(settings.ballSpeed);
 }
 
-// 효과 비활성화
-function deactivateEffect(effectName) {
-    // 타이머 취소
-    if (effectTimers[effectName]) {
-        clearTimeout(effectTimers[effectName]);
-        effectTimers[effectName] = null;
-    }
-
-    // 효과 플래그 false
-    activeEffects[effectName] = false;
-
-    // 공 속도 복원 (ballSlow인 경우)
-    if (effectName === 'ballSlow') {
-        restoreBallSpeed();
-    }
-
-    console.log(`⏰ ${effectName} 비활성화됨`);
-}
-
-// 효과 활성화
-function activateEffect(effectName, duration, currentWidth = null) {
-    // 패들 크기 변경 효과인 경우 애니메이션 시작
-    const isPaddleEffect = (effectName === 'paddleExpanded' || effectName === 'paddleShrink');
-
-    // 현재 너비: 전달받은 값이 있으면 사용, 없으면 현재 애니메이션 적용된 너비
-    const oldWidth = isPaddleEffect ? (currentWidth !== null ? currentWidth : getAnimatedPaddleWidth()) : 0;
-
-    // 이미 활성화된 효과는 타이머만 갱신
-    if (effectTimers[effectName]) {
-        clearTimeout(effectTimers[effectName]);
-    }
-
-    activeEffects[effectName] = true;
-    console.log(`⏰ ${effectName} 활성화 (${duration}ms)`);
-
-    // 패들 크기 변경 애니메이션 시작
-    if (isPaddleEffect) {
-        const newWidth = getPaddleWidth();  // 효과 적용 후 목표 너비
-        startPaddleResizeAnimation(oldWidth, newWidth);
-    }
-
-    // duration 후 효과 제거
-    if (duration) {
-        effectTimers[effectName] = setTimeout(() => {
-            // 패들 크기 복원 애니메이션
-            if (isPaddleEffect) {
-                const beforeWidth = getAnimatedPaddleWidth();  // 현재 애니메이션 적용된 너비
-                activeEffects[effectName] = false;
-                const afterWidth = getPaddleWidth();  // 효과 해제 후 목표 너비
-                startPaddleResizeAnimation(beforeWidth, afterWidth);
-            } else {
-                activeEffects[effectName] = false;
-            }
-
-            effectTimers[effectName] = null;
-
-            // 공 속도 복원 (ballSlow인 경우)
-            if (effectName === 'ballSlow') {
-                restoreBallSpeed();
-            }
-
-            console.log(`⏰ ${effectName} 종료`);
-        }, duration);
-    }
-}
-
 // 현재 패들 너비 계산 (효과 반영) - paddle 메서드로 위임
 function getPaddleWidth() {
-    return paddle.getWidth(activeEffects);
+    return paddle.getWidth(effectManager.getActiveEffects());
 }
 
 // ========================================
@@ -307,7 +230,7 @@ function updatePaddleAnimation() {
 
 // 애니메이션이 적용된 패들 너비 가져오기 (paddle 메서드로 위임)
 function getAnimatedPaddleWidth() {
-    return paddle.getAnimatedWidth(activeEffects);
+    return paddle.getAnimatedWidth(effectManager.getActiveEffects());
 }
 
 // ========================================
@@ -619,6 +542,15 @@ async function init() {
     brickManager = new BrickManager();
     brickManager.init(gameState.difficulty);
 
+    // 효과 매니저 초기화
+    effectManager = new EffectManager();
+    effectManager.setCallbacks({
+        getPaddleWidth: getPaddleWidth,
+        getAnimatedPaddleWidth: getAnimatedPaddleWidth,
+        startPaddleAnimation: startPaddleResizeAnimation,
+        restoreBallSpeed: restoreBallSpeed
+    });
+
     // 게임 상태 초기화
     gameState.reset();
     updateDisplay();
@@ -799,20 +731,8 @@ function resetItems() {
         UI.lives.classList.remove('life-gain', 'life-loss');
     }
 
-    // 모든 타이머 취소
-    Object.keys(effectTimers).forEach(key => {
-        if (effectTimers[key]) {
-            clearTimeout(effectTimers[key]);
-            effectTimers[key] = null;
-        }
-    });
-
-    // 효과 플래그 초기화
-    activeEffects = {
-        paddleExpanded: false,
-        ballSlow: false,
-        paddleShrink: false
-    };
+    // 효과 초기화 (effectManager로 위임)
+    effectManager.reset();
 }
 
 // 게임 시작
