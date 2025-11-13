@@ -29,6 +29,17 @@
     - 메서드: init(), draw(), checkBallBrickCollision(), destroyBrick(), checkAllCleared(), getBricks(), getAliveBricks()
   - **결과**: 캡슐화 완료, 단일 책임 원칙 적용, 객체 참조 기반 설계
 
+- [x] **게임 시스템 리팩토링** ✅ (Stage 19 완료)
+  - [x] `gameState.js` - 게임 상태 관리 (76 lines)
+    - 방식: 단순 객체 + 헬퍼 메서드 (클래스 아님)
+    - 속성: score, lives, difficulty, running, paused
+    - 메서드: isPlaying(), start(), stop(), pause(), resume(), togglePause(), reset()
+  - [x] `effectManager.js` - EffectManager 클래스 (165 lines)
+    - 방식: 클래스 + 콜백 패턴
+    - 속성: activeEffects, timers, callbacks
+    - 메서드: setCallbacks(), activate(), deactivate(), isActive(), getActiveEffects(), reset()
+  - **결과**: game.js 약 120줄 감소, 시스템 분리 완료
+
 ## 3. Update 함수 분리
 - [ ] **update() 함수 모듈화**
   - `updateGameplay()` - 인게임 로직 (공, 패들, 충돌 등)
@@ -135,12 +146,13 @@
 ---
 
 ## 참고
-- 현재 game.js 파일 크기: ~850 lines (Stage 17 후)
+- 현재 game.js 파일 크기: ~730 lines (Stage 19 후)
 - 리팩토링 우선순위: 1 → 2 → 4 → 3 → 5
   - 이유: 클래스화(2) 후 상태패턴(4) 적용이 자연스럽고, 그 후 update 분리(3)가 단순해짐
 - Stage 16 완료 (2025-10-28): 9개 애니메이션 시스템
 - Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리
-- Stage 18 진행 중 (2025-11-06~): OOP 리팩토링
+- Stage 18 완료 (2025-11-06 ~ 2025-11-11): OOP 리팩토링
+- Stage 19 완료 (2025-11-11 ~ 2025-11-13): 게임 시스템 분리
 
 ## 진행 상황
 
