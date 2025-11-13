@@ -472,64 +472,6 @@ function playNextNote() {
 
 ---
 
-### 15단계: 게임플레이 버그 수정
-**상태**: ✅ 완료
-
-**구현 내용**:
-- [x] 공이 벽에 끼이는 버그 수정
-
-**이슈 및 해결**:
-
-1. **공이 벽에 끼이는 현상**
-   - **문제**: 공이 좌우 벽이나 상단 벽에 닿을 때 벽에 끼이거나 관통하는 현상 발생
-   - **원인**:
-     - 속도만 반전(`ballSpeedX = -ballSpeedX`)하고 공의 위치를 보정하지 않음
-     - 공이 벽을 관통한 상태에서 매 프레임마다 충돌 감지되어 속도가 계속 반전됨 (진동)
-     - 속도가 빠를 경우 한 프레임에 벽을 완전히 관통하여 벽 바깥에 위치하게 됨
-   - **기존 코드**:
-     ```javascript
-     // 문제가 있는 코드
-     if (ballX + BALL.RADIUS > CANVAS.WIDTH || ballX - BALL.RADIUS < 0) {
-         ballSpeedX = -ballSpeedX;  // 단순 반전 → 벽 안에서 진동
-     }
-     ```
-   - **해결**:
-     ```javascript
-     // 수정된 코드
-     if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
-         // 오른쪽 벽 충돌 - 위치 보정
-         ballX = CANVAS.WIDTH - BALL.RADIUS;
-         ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
-         playWallHitSound();
-     } else if (ballX - BALL.RADIUS < 0) {
-         // 왼쪽 벽 충돌 - 위치 보정
-         ballX = BALL.RADIUS;
-         ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
-         playWallHitSound();
-     }
-
-     // 상단 벽 충돌
-     if (ballY - BALL.RADIUS < 0) {
-         // 위치 보정
-         ballY = BALL.RADIUS;
-         ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
-         playWallHitSound();
-     }
-     ```
-   - **개선 사항**:
-     1. **위치 보정**: 공이 벽을 관통했을 때 벽 경계로 위치 되돌리기
-     2. **절대값 사용**: `Math.abs()`로 속도 방향을 명확하게 설정
-     3. **조건 분리**: `if-else if`로 한 프레임에 한 번만 처리
-   - **결과**: 공이 벽에 끼이지 않고 부드럽게 반사됨
-
-**파일 변경**:
-- `game.js`: 벽 충돌 감지 로직 개선 (1296-1315번 줄)
-
-**테스트 방법**:
-- 게임 시작 후 공이 좌우 벽에 부딪힐 때 끼이지 않는지 확인
-- 공이 상단 벽에 부딪힐 때 끼이지 않는지 확인
-- 난이도 '어려움'으로 공 속도가 빠를 때도 정상 작동하는지 확인
-
 ---
 
 ### 16단계: 애니메이션 시스템
@@ -719,19 +661,20 @@ let paddleHitWaves = [];
 
 ## 버그 수정 이력
 
-### 2025-11-11: 패들 및 공 관련 버그 수정 ✅
+### 2025-10-28: 공이 벽에 끼이는 버그 ✅
+- **문제**: 공이 좌우/상단 벽에 끼이거나 관통하는 현상
+- **해결**: 위치 보정 + 절대값 사용으로 방향 명확화
+- **결과**: 공이 벽에 부드럽게 반사
+- **상세**: REFACTORING_TODO.md "버그 수정 목록" 참조
+
+### 2025-11-11: 패들 및 공 관련 버그 2건 ✅
 1. **패들이 화면 밖으로 나가는 문제**
-   - 문제: 화면 가장자리에서 확장 아이템 획득 시 패들이 화면 밖으로 나감
-   - 해결: paddle.js의 update() 메서드에 화면 경계 체크 추가
-   - 코드: `this.x = Math.max(0, Math.min(this.x, CANVAS.WIDTH - currentWidth))`
+   - 화면 경계 체크 추가 (`paddle.js`)
 
 2. **패들 위치에 따른 공 속도 변경 문제**
-   - 문제: 패들 중앙으로 갈수록 속도가 느려지고, 바깥으로 갈수록 속도가 빨라짐
-   - 해결: 삼각함수를 사용해 각도만 변경하고 속도 크기 유지 (-60° ~ +60°)
-   - 추가: ball.js에 baseSpeed 속성 추가, restoreSpeed()에 0으로 나누기 방지
+   - 삼각함수 사용으로 속도 크기 유지 (`ball.js`)
 
 - **브랜치**: fix/paddle-and-ball-bugs
-- **상태**: PR 대기 중
 - **상세**: REFACTORING_TODO.md "버그 수정 목록" 참조
 
 ---
@@ -740,7 +683,7 @@ let paddleHitWaves = [];
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
 - [x] 패들 및 공 관련 버그 2건 수정 완료
-- [ ] Stage 19: 게임 시스템 OOP 리팩토링 (GameState, EffectManager)
+- [x] Stage 19: 게임 시스템 OOP 리팩토링 완료 (GameState, EffectManager)
 - [ ] 디자인 패턴 적용 (공 상태 패턴)
 - [ ] Update 함수 분리
 - [ ] 선택 사항: 모바일 터치 컨트롤

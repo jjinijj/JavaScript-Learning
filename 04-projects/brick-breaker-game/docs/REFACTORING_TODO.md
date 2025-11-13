@@ -61,6 +61,50 @@
 ---
 
 ## 버그 수정 목록
+
+- [x] **공이 벽에 끼이는 버그** ✅ (2025-10-28)
+  - **문제**: 공이 좌우 벽이나 상단 벽에 닿을 때 벽에 끼이거나 관통하는 현상 발생
+  - **원인**:
+    - 속도만 반전(`ballSpeedX = -ballSpeedX`)하고 공의 위치를 보정하지 않음
+    - 공이 벽을 관통한 상태에서 매 프레임마다 충돌 감지되어 속도가 계속 반전됨 (진동)
+    - 속도가 빠를 경우 한 프레임에 벽을 완전히 관통하여 벽 바깥에 위치하게 됨
+  - **기존 코드**:
+    ```javascript
+    // 문제가 있는 코드
+    if (ballX + BALL.RADIUS > CANVAS.WIDTH || ballX - BALL.RADIUS < 0) {
+        ballSpeedX = -ballSpeedX;  // 단순 반전 → 벽 안에서 진동
+    }
+    ```
+  - **해결**:
+    ```javascript
+    // 수정된 코드
+    if (ballX + BALL.RADIUS > CANVAS.WIDTH) {
+        // 오른쪽 벽 충돌 - 위치 보정
+        ballX = CANVAS.WIDTH - BALL.RADIUS;
+        ballSpeedX = -Math.abs(ballSpeedX); // 항상 왼쪽으로
+        playWallHitSound();
+    } else if (ballX - BALL.RADIUS < 0) {
+        // 왼쪽 벽 충돌 - 위치 보정
+        ballX = BALL.RADIUS;
+        ballSpeedX = Math.abs(ballSpeedX); // 항상 오른쪽으로
+        playWallHitSound();
+    }
+
+    // 상단 벽 충돌
+    if (ballY - BALL.RADIUS < 0) {
+        // 위치 보정
+        ballY = BALL.RADIUS;
+        ballSpeedY = Math.abs(ballSpeedY); // 항상 아래로
+        playWallHitSound();
+    }
+    ```
+  - **개선 사항**:
+    1. **위치 보정**: 공이 벽을 관통했을 때 벽 경계로 위치 되돌리기
+    2. **절대값 사용**: `Math.abs()`로 속도 방향을 명확하게 설정
+    3. **조건 분리**: `if-else if`로 한 프레임에 한 번만 처리
+  - **결과**: 공이 벽에 끼이지 않고 부드럽게 반사됨
+  - **파일**: `game.js` (벽 충돌 감지 로직 개선)
+
 - [x] **패들이 화면 밖으로 나가는 문제** ✅ (2025-11-11)
   - **문제**: 화면 가장자리에서 확장 아이템 획득 시 패들이 화면 밖으로 나감
   - **해결**: paddle.js의 update() 메서드에 화면 경계 체크 추가
