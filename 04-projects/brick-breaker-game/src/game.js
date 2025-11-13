@@ -124,21 +124,59 @@ let effectTimers = {
 };
 
 // ========================================
-// 6단계: 점수 및 생명 시스템
+// 6단계: 게임 상태 (단순 객체 + 헬퍼 메서드)
 // ========================================
-let score = 0;
-let lives = 3;
+const gameState = {
+    score: 0,
+    lives: GAME.INITIAL_LIVES,
+    difficulty: 'normal',
+    running: false,
+    paused: false,
 
-// ========================================
-// 7단계: 게임 상태 관리
-// ========================================
-let gameRunning = false;  // 게임 진행 중
-let gamePaused = false;   // 일시정지
+    // 게임 진행 중인지 체크 (running && !paused)
+    isPlaying() {
+        return this.running && !this.paused;
+    },
 
-// ========================================
-// 8단계: 난이도 및 통계 시스템
-// ========================================
-let difficulty = 'normal'; // 난이도
+    // 게임 시작
+    start() {
+        this.running = true;
+        this.paused = false;
+    },
+
+    // 게임 정지
+    stop() {
+        this.running = false;
+        this.paused = false;
+    },
+
+    // 일시정지
+    pause() {
+        if (this.running) {
+            this.paused = true;
+        }
+    },
+
+    // 재개
+    resume() {
+        if (this.running) {
+            this.paused = false;
+        }
+    },
+
+    // 일시정지 토글
+    togglePause() {
+        if (this.running) {
+            this.paused = !this.paused;
+        }
+    },
+
+    // 상태 초기화 (점수/생명만)
+    reset() {
+        this.score = 0;
+        this.lives = GAME.INITIAL_LIVES;
+    }
+};
 
 // DOM 요소 캐싱
 const UI = {};
@@ -178,8 +216,8 @@ function applyItemEffect(itemType) {
             break;
 
         case 'extra_life':
-            if (lives < GAME.MAX_LIVES) {
-                lives++;
+            if (gameState.lives < GAME.MAX_LIVES) {
+                gameState.lives++;
                 updateDisplay();
                 startLifeAnimation(true);  // 생명 획득 애니메이션
                 console.log('❤️ 생명 +1');
@@ -203,7 +241,7 @@ function applyItemEffect(itemType) {
 
 // 공 속도 복원
 function restoreBallSpeed() {
-    const settings = DIFFICULTY_SETTINGS[difficulty];
+    const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
     ball.restoreSpeed(settings.ballSpeed);
 }
 
@@ -621,18 +659,17 @@ async function init() {
 
     // 게임 객체 초기화
     ball = new Ball();
-    ball.reset(difficulty);
+    ball.reset(gameState.difficulty);
 
     paddle = new Paddle();
-    paddle.reset(difficulty);
+    paddle.reset(gameState.difficulty);
 
     // 벽돌 초기화
     brickManager = new BrickManager();
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
 
-    // 점수 및 생명 초기화
-    score = 0;
-    lives = 3;
+    // 게임 상태 초기화
+    gameState.reset();
     updateDisplay();
 
     // 입력 이벤트 핸들러 설정
@@ -641,7 +678,7 @@ async function init() {
             ball.launch();
         },
         onPausePress: () => {
-            if (gameRunning) {
+            if (gameState.running) {
                 togglePause();
             }
         },
@@ -763,7 +800,7 @@ function handleMuteToggle() {
 
     // 음소거 해제 시 게임 상태에 따라 적절한 BGM 재생
     if (!muted) {
-        if (gameRunning) {
+        if (gameState.running) {
             playGameBGM();
         } else {
             playMenuBGM();
@@ -836,21 +873,19 @@ function startGame() {
     playClickSound();
 
     // 난이도 가져오기
-    difficulty = UI.difficultySelect.value;
+    gameState.difficulty = UI.difficultySelect.value;
 
     // 게임 상태 초기화
-    score = 0;
-    lives = 3;
+    gameState.reset();
     updateDisplay();
 
     // 난이도에 따라 초기화
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
     resetBall();
     resetPaddle();
     resetItems();
 
-    gameRunning = true;
-    gamePaused = false;
+    gameState.start();
 
     // 시작 화면 페이드 아웃
     hideUIPopupAnimation(UI.startScreen);
@@ -858,16 +893,16 @@ function startGame() {
     // 게임 BGM 재생
     playGameBGM();
 
-    console.log('게임 시작! 난이도:', difficulty);
+    console.log('게임 시작! 난이도:', gameState.difficulty);
 }
 
 // 일시정지 토글
 function togglePause() {
-    if (!gameRunning) return;
+    if (!gameState.running) return;
 
-    gamePaused = !gamePaused;
+    gameState.togglePause();
 
-    if (gamePaused) {
+    if (gameState.paused) {
         UI.pauseScreen.classList.remove('hidden');
         startUIPopupAnimation(UI.pauseScreen);
         console.log('일시정지');
@@ -889,18 +924,16 @@ function restartGame() {
     resetItems();
 
     // 게임 상태 초기화
-    score = 0;
-    lives = 3;
+    gameState.reset();
     updateDisplay();
 
     // 게임 요소 리셋
     resetBall();
     resetPaddle();
-    brickManager.init(difficulty);
+    brickManager.init(gameState.difficulty);
 
     // 게임 시작
-    gameRunning = true;
-    gamePaused = false;
+    gameState.start();
 
     // 게임 BGM 재생
     playGameBGM();
@@ -913,8 +946,7 @@ function showMenu() {
     // UI 클릭 사운드
     playClickSound();
 
-    gameRunning = false;
-    gamePaused = false;
+    gameState.stop();
 
     // 다른 화면들 즉시 숨김
     UI.pauseScreen.classList.add('hidden');
@@ -934,8 +966,8 @@ function showMenu() {
 
 // 게임 승리 (모든 벽돌 파괴)
 function gameWin() {
-    // 게임 일시정지 (gameRunning은 유지하여 애니메이션 계속 실행)
-    gamePaused = true;
+    // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
+    gameState.pause();
 
     // BGM 정지
     stopBGM();
@@ -946,10 +978,10 @@ function gameWin() {
     // 레벨 전환 애니메이션 시작 (VICTORY!)
     startLevelTransition('VICTORY!', () => {
         // 애니메이션 완료 후 게임 완전히 중지
-        gameRunning = false;
+        gameState.stop();
 
         // UI 표시
-        UI.winFinalScore.textContent = score;
+        UI.winFinalScore.textContent = gameState.score;
         UI.winScreen.classList.remove('hidden');
         startUIPopupAnimation(UI.winScreen);
     });
@@ -957,22 +989,22 @@ function gameWin() {
     // 통계 업데이트
     updateStats({
         gameCompleted: true,
-        score: score,
+        score: gameState.score,
         bricksDestroyed: 0
     });
     updateStatsDisplay();
 
-    console.log('게임 승리! 최종 점수:', score);
+    console.log('게임 승리! 최종 점수:', gameState.score);
 }
 
 // 공 위치 초기화
 function resetBall() {
-    ball.reset(difficulty);
+    ball.reset(gameState.difficulty);
 }
 
 // 패들 위치 초기화
 function resetPaddle() {
-    paddle.reset(difficulty);
+    paddle.reset(gameState.difficulty);
 }
 
 // 벽돌 관련 함수 (bricks.js에서 import)
@@ -1007,7 +1039,7 @@ function collisionDetection() {
         createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
 
         // 점수 증가
-        score += 10;
+        gameState.score += 10;
         updateDisplay();
 
         // 점수 팝업 생성
@@ -1021,7 +1053,7 @@ function collisionDetection() {
         });
         updateStatsDisplay();
 
-        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', score);
+        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', gameState.score);
 
         // 아이템 드롭 (확률적)
         if (Math.random() < ITEM.DROP_CHANCE) {
@@ -1041,11 +1073,11 @@ function collisionDetection() {
 // 화면 표시 업데이트
 function updateDisplay() {
     // 점수 표시
-    UI.score.textContent = score;
+    UI.score.textContent = gameState.score;
 
     // 생명 표시 (하트 이모지)
     let livesText = '';
-    for (let i = 0; i < lives; i++) {
+    for (let i = 0; i < gameState.lives; i++) {
         livesText += '❤️';
     }
     UI.lives.textContent = livesText;
@@ -1059,8 +1091,8 @@ function update() {
     // 레벨 전환 애니메이션은 항상 업데이트
     updateLevelTransition();
 
-    // 게임이 실행 중이 아니거나 일시정지 상태면 업데이트 안 함
-    if (!gameRunning || gamePaused) return;
+    // 게임이 진행 중이 아니면 업데이트 안 함
+    if (!gameState.isPlaying()) return;
 
     // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
     const paddleWidth = getAnimatedPaddleWidth();
@@ -1073,13 +1105,13 @@ function update() {
 
     // 하단 벽 충돌 (생명 감소)
     if (ball.checkBottomCollision()) {
-        lives--;
+        gameState.lives--;
         updateDisplay();
         startLifeAnimation(false);  // 생명 소실 애니메이션
 
-        if (lives <= 0) {
-            // 게임 일시정지 (gameRunning은 유지하여 애니메이션 계속 실행)
-            gamePaused = true;
+        if (gameState.lives <= 0) {
+            // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
+            gameState.pause();
 
             // BGM 정지
             stopBGM();
@@ -1090,10 +1122,10 @@ function update() {
             // 레벨 전환 애니메이션 시작 (GAME OVER)
             startLevelTransition('GAME OVER', () => {
                 // 애니메이션 완료 후 게임 완전히 중지
-                gameRunning = false;
+                gameState.stop();
 
                 // UI 표시
-                UI.finalScore.textContent = score;
+                UI.finalScore.textContent = gameState.score;
                 UI.highScore.textContent = getStats().bestScore;
                 UI.gameOverScreen.classList.remove('hidden');
                 startUIPopupAnimation(UI.gameOverScreen);
@@ -1102,12 +1134,12 @@ function update() {
             // 통계 업데이트
             updateStats({
                 gameCompleted: true,
-                score: score,
+                score: gameState.score,
                 bricksDestroyed: 0
             });
             updateStatsDisplay();
 
-            console.log('게임 오버! 최종 점수:', score, '총 게임 수:', getStats().totalGames);
+            console.log('게임 오버! 최종 점수:', gameState.score, '총 게임 수:', getStats().totalGames);
         } else {
             // 생명 손실 사운드
             playLifeLostSound();
@@ -1116,7 +1148,7 @@ function update() {
             resetBall();
             resetPaddle();
             resetItems();  // 아이템 및 효과 초기화
-            console.log('생명 감소. 남은 생명:', lives);
+            console.log('생명 감소. 남은 생명:', gameState.lives);
         }
     }
 
