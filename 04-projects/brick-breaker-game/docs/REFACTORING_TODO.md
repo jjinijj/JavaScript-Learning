@@ -55,7 +55,7 @@
   - 현재: if문으로 ballLaunched 체크
 
 ## 5. 애니메이션 시스템 통합 (OOP + 효율성)
-- [ ] **AnimationManager 클래스 생성**
+- [x] **AnimationManager 클래스 생성** ✅ (Stage 20 완료)
   - 현재: 3개의 전역 변수 + 각각의 update/draw 함수들
     - `lifeAnimation` + `startLifeAnimation()`, `updateLifeAnimation()`, `getLifeDisplayOffset()`
     - `levelTransition` + `startLevelTransition()`, `updateLevelTransition()`, `drawLevelTransition()`
@@ -257,11 +257,11 @@
 ---
 
 ## 참고
-- 현재 game.js 파일 크기: 1146 lines (Stage 19 후)
+- 현재 game.js 파일 크기: 885 lines (Stage 20 후)
 - **리팩토링 우선순위 (업데이트)**:
   - **1단계**: 섹션 1, 2 완료 ✅ (모듈 분리, 클래스화)
   - **2단계**: 섹션 5 → 8 (효율성 + OOP 개선)
-    - 5: AnimationManager 클래스 (효율성 + 통합)
+    - 5: AnimationManager 클래스 (효율성 + 통합) ✅ Stage 20 완료
     - 6: CollisionDetector 클래스 (단일 책임)
     - 7: UIManager 클래스 + 성능 최적화
     - 8: 불필요한 래퍼 함수 제거 (간결화)
@@ -273,6 +273,7 @@
 - Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리
 - Stage 18 완료 (2025-11-06 ~ 2025-11-11): OOP 리팩토링
 - Stage 19 완료 (2025-11-11 ~ 2025-11-13): 게임 시스템 분리
+- Stage 20 완료 (2025-11-13): 애니메이션 시스템 통합
 
 ## 진행 상황
 

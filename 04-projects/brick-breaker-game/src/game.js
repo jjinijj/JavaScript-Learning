@@ -92,6 +92,7 @@ import { Ball } from './ball.js';
 import { Paddle } from './paddle.js';
 import { gameState } from './gameState.js';
 import { EffectManager } from './effectManager.js';
+import { AnimationManager } from './animationManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -106,11 +107,7 @@ let ball;
 let paddle;
 let brickManager;
 let effectManager;
-
-// 애니메이션 상태 변수
-let lifeAnimation = null;       // 생명력 애니메이션
-let uiPopupAnimation = null;    // UI 팝업 애니메이션
-let levelTransition = null;     // 레벨 전환 애니메이션
+let animationManager;
 
 // ========================================
 // 6단계: 게임 상태 (gameState.js에서 import)
@@ -159,7 +156,7 @@ function applyItemEffect(itemType) {
             if (gameState.lives < GAME.MAX_LIVES) {
                 gameState.lives++;
                 updateDisplay();
-                startLifeAnimation(true);  // 생명 획득 애니메이션
+                animationManager.startLifeAnimation(true, UI.lives);  // 생명 획득 애니메이션
                 console.log('❤️ 생명 +1');
             } else {
                 console.log('❤️ 생명이 이미 최대입니다 (최대 ' + GAME.MAX_LIVES + '개)');
@@ -211,13 +208,6 @@ function getPaddleWidth() {
 // 애니메이션 함수 - 6. 패들 크기 변경 애니메이션
 // ========================================
 
-// 이징 함수 (easeOutElastic은 paddle.js로 이동)
-function easeOutBack(t) {
-    const c1 = ANIMATION.EASING.OVERSHOOT_STRENGTH;
-    const c3 = c1 + 1;
-    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-}
-
 // 패들 크기 변경 애니메이션 시작 (paddle 메서드로 위임)
 function startPaddleResizeAnimation(fromWidth, toWidth) {
     paddle.startResizeAnimation(fromWidth, toWidth);
@@ -234,259 +224,11 @@ function getAnimatedPaddleWidth() {
 }
 
 // ========================================
-// 애니메이션 함수 - 7. 생명력 회복/소실 애니메이션
+// 애니메이션 함수 - AnimationManager로 통합됨
 // ========================================
-
-// 생명력 애니메이션 시작
-function startLifeAnimation(isGain) {
-    lifeAnimation = {
-        startTime: Date.now(),
-        duration: ANIMATION.LIFE_CHANGE.SCALE_DURATION,
-        isGain: isGain,  // true: 획득, false: 소실
-        pulseCount: 0
-    };
-
-    // HTML 요소에 애니메이션 클래스 추가
-    const livesElement = UI.lives;
-    if (livesElement) {
-        // 기존 클래스 제거
-        livesElement.classList.remove('life-gain', 'life-loss');
-
-        // 애니메이션 클래스 추가
-        if (isGain) {
-            livesElement.classList.add('life-gain');
-        } else {
-            livesElement.classList.add('life-loss');
-        }
-
-        // 애니메이션 종료 후 클래스 제거
-        setTimeout(() => {
-            livesElement.classList.remove('life-gain', 'life-loss');
-        }, ANIMATION.LIFE_CHANGE.SCALE_DURATION * ANIMATION.LIFE_CHANGE.PULSE_COUNT);
-    }
-
-    console.log(`💓 생명력 애니메이션 시작: ${isGain ? '획득' : '소실'}`);
-}
-
-// 생명력 애니메이션 업데이트
-function updateLifeAnimation() {
-    if (!lifeAnimation) return;
-
-    const elapsed = Date.now() - lifeAnimation.startTime;
-    const progress = elapsed / lifeAnimation.duration;
-
-    if (progress >= 1) {
-        lifeAnimation.pulseCount++;
-
-        // 펄스 반복
-        if (lifeAnimation.pulseCount >= ANIMATION.LIFE_CHANGE.PULSE_COUNT) {
-            lifeAnimation = null;
-            console.log(`✅ 생명력 애니메이션 완료`);
-        } else {
-            lifeAnimation.startTime = Date.now();
-        }
-    }
-}
-
-// 생명력 표시 오프셋 가져오기 (흔들림 + 펄스)
-function getLifeDisplayOffset() {
-    if (!lifeAnimation) return { x: 0, y: 0, scale: 1 };
-
-    const elapsed = Date.now() - lifeAnimation.startTime;
-    const progress = elapsed / lifeAnimation.duration;
-    const phase = Math.sin(progress * Math.PI);  // 0 → 1 → 0 (한 주기)
-
-    // 소실 시에만 화면 흔들림
-    const shake = lifeAnimation.isGain ? 0 : ANIMATION.LIFE_CHANGE.SHAKE_INTENSITY * phase;
-
-    return {
-        x: (Math.random() - 0.5) * shake,
-        y: (Math.random() - 0.5) * shake,
-        scale: 1 + 0.3 * phase,  // 1.0 → 1.3 → 1.0 (펄스)
-        color: lifeAnimation.isGain ? '#00ff00' : '#ff0000'  // 획득: 초록, 소실: 빨강
-    };
-}
-
-// ============================================================================
-// 레벨 전환 애니메이션 (승리/게임오버)
-// ============================================================================
-
-// 레벨 전환 애니메이션 시작
-function startLevelTransition(text, callback) {
-    levelTransition = {
-        startTime: Date.now(),
-        fadeDuration: ANIMATION.LEVEL_TRANSITION.FADE_DURATION,
-        textDisplay: ANIMATION.LEVEL_TRANSITION.TEXT_DISPLAY,
-        zoomScale: ANIMATION.LEVEL_TRANSITION.ZOOM_SCALE,
-        text: text,
-        callback: callback,
-        phase: 'fadeIn'  // fadeIn -> display -> fadeOut
-    };
-}
-
-// 레벨 전환 애니메이션 업데이트
-function updateLevelTransition() {
-    if (!levelTransition) return;
-
-    const elapsed = Date.now() - levelTransition.startTime;
-
-    if (levelTransition.phase === 'fadeIn') {
-        // 페이드 인 단계
-        const progress = Math.min(elapsed / levelTransition.fadeDuration, 1);
-        levelTransition.fadeProgress = progress;
-        levelTransition.zoomProgress = progress;
-
-        if (progress >= 1) {
-            levelTransition.phase = 'display';
-            levelTransition.startTime = Date.now();  // 타이머 리셋
-        }
-    } else if (levelTransition.phase === 'display') {
-        // 텍스트 표시 단계
-        levelTransition.fadeProgress = 1;
-        levelTransition.zoomProgress = 1;
-
-        if (elapsed >= levelTransition.textDisplay) {
-            levelTransition.phase = 'fadeOut';
-            levelTransition.startTime = Date.now();  // 타이머 리셋
-        }
-    } else if (levelTransition.phase === 'fadeOut') {
-        // 페이드 아웃 단계
-        const progress = Math.min(elapsed / levelTransition.fadeDuration, 1);
-        levelTransition.fadeProgress = 1 - progress;
-        levelTransition.zoomProgress = 1 + progress * 0.5;  // 줌 아웃
-
-        if (progress >= 1) {
-            const callback = levelTransition.callback;
-            levelTransition = null;
-            if (callback) callback();
-        }
-    }
-}
-
-// 레벨 전환 애니메이션 그리기
-function drawLevelTransition() {
-    if (!levelTransition) return;
-
-    ctx.save();
-
-    // 반투명 오버레이
-    ctx.fillStyle = `rgba(0, 0, 0, ${levelTransition.fadeProgress * 0.7})`;
-    ctx.fillRect(0, 0, CANVAS.WIDTH, CANVAS.HEIGHT);
-
-    // 텍스트 그리기
-    const fontSize = 48;
-    const scale = levelTransition.zoomProgress;
-
-    ctx.font = `bold ${fontSize}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // 텍스트 그림자
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-    ctx.shadowBlur = 20;
-
-    // 텍스트
-    ctx.fillStyle = `rgba(255, 255, 255, ${levelTransition.fadeProgress})`;
-
-    ctx.save();
-    ctx.translate(CANVAS.WIDTH / 2, CANVAS.HEIGHT / 2);
-    ctx.scale(scale, scale);
-    ctx.fillText(levelTransition.text, 0, 0);
-    ctx.restore();
-
-    ctx.restore();
-}
-
-// ============================================================================
-// UI 팝업 애니메이션
-// ============================================================================
-
-// UI 팝업 애니메이션 시작
-function startUIPopupAnimation(element) {
-    if (!element) return;
-
-    // overlay-content 찾기
-    const content = element.querySelector('.overlay-content');
-
-    uiPopupAnimation = {
-        element: element,
-        content: content,
-        startTime: Date.now(),
-        fadeDuration: ANIMATION.UI_POPUP.FADE_DURATION,
-        scaleDuration: ANIMATION.UI_POPUP.SCALE_DURATION
-    };
-
-    // 초기 상태 설정
-    element.style.opacity = '0';  // 배경만 fade
-    if (content) {
-        content.style.transform = 'scale(0.8)';  // 컨텐츠는 scale
-    }
-}
-
-// UI 팝업 애니메이션 업데이트
-function updateUIPopupAnimation() {
-    if (!uiPopupAnimation) return;
-
-    const elapsed = Date.now() - uiPopupAnimation.startTime;
-    const fadeProgress = Math.min(elapsed / uiPopupAnimation.fadeDuration, 1);
-    const scaleProgress = Math.min(elapsed / uiPopupAnimation.scaleDuration, 1);
-
-    // 배경 페이드 인
-    uiPopupAnimation.element.style.opacity = fadeProgress.toString();
-
-    // 컨텐츠 오버슈트 스케일 (easeOutBack)
-    if (uiPopupAnimation.content) {
-        const easedScale = easeOutBack(scaleProgress);
-        const scale = 0.8 + (ANIMATION.UI_POPUP.OVERSHOOT - 0.8) * easedScale;
-        uiPopupAnimation.content.style.transform = `scale(${scale})`;
-    }
-
-    // 애니메이션 완료
-    if (scaleProgress >= 1) {
-        if (uiPopupAnimation.content) {
-            uiPopupAnimation.content.style.transform = 'scale(1)';
-        }
-        uiPopupAnimation = null;
-    }
-}
-
-// UI 팝업 애니메이션 제거 (페이드 아웃)
-function hideUIPopupAnimation(element, callback) {
-    if (!element) {
-        if (callback) callback();
-        return;
-    }
-
-    const content = element.querySelector('.overlay-content');
-    const startTime = Date.now();
-    const duration = ANIMATION.UI_POPUP.FADE_DURATION;
-
-    function animate() {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        // 배경 페이드 아웃
-        element.style.opacity = (1 - progress).toString();
-
-        // 컨텐츠 스케일 다운
-        if (content) {
-            content.style.transform = `scale(${1 - progress * 0.2})`;
-        }
-
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        } else {
-            element.classList.add('hidden');
-            element.style.opacity = '1';
-            if (content) {
-                content.style.transform = 'scale(1)';
-            }
-            if (callback) callback();
-        }
-    }
-
-    animate();
-}
+// - 생명력 회복/소실 애니메이션 → animationManager.startLifeAnimation()
+// - 레벨 전환 애니메이션 → animationManager.startLevelTransition()
+// - UI 팝업 애니메이션 → animationManager.startUIPopupAnimation()
 
 // 초기화 함수
 async function init() {
@@ -550,6 +292,9 @@ async function init() {
         startPaddleAnimation: startPaddleResizeAnimation,
         restoreBallSpeed: restoreBallSpeed
     });
+
+    // 애니메이션 매니저 초기화
+    animationManager = new AnimationManager();
 
     // 게임 상태 초기화
     gameState.reset();
@@ -722,9 +467,9 @@ function resetItems() {
     resetItemsModule();  // 아이템 배열 초기화
     resetAnimations();  // 애니메이션 배열 초기화
     paddle.animation = null;  // 패들 애니메이션 초기화
-    lifeAnimation = null;
-    uiPopupAnimation = null;
-    levelTransition = null;
+
+    // 애니메이션 매니저 초기화
+    animationManager.reset();
 
     // 생명력 애니메이션 CSS 클래스 제거
     if (UI.lives) {
@@ -759,7 +504,7 @@ function startGame() {
     gameState.start();
 
     // 시작 화면 페이드 아웃
-    hideUIPopupAnimation(UI.startScreen);
+    animationManager.hideUIPopupAnimation(UI.startScreen);
 
     // 게임 BGM 재생
     playGameBGM();
@@ -775,10 +520,10 @@ function togglePause() {
 
     if (gameState.paused) {
         UI.pauseScreen.classList.remove('hidden');
-        startUIPopupAnimation(UI.pauseScreen);
+        animationManager.startUIPopupAnimation(UI.pauseScreen);
         console.log('일시정지');
     } else {
-        hideUIPopupAnimation(UI.pauseScreen);
+        animationManager.hideUIPopupAnimation(UI.pauseScreen);
         console.log('재개');
     }
 }
@@ -826,7 +571,7 @@ function showMenu() {
 
     // 시작 화면 애니메이션과 함께 표시
     UI.startScreen.classList.remove('hidden');
-    startUIPopupAnimation(UI.startScreen);
+    animationManager.startUIPopupAnimation(UI.startScreen);
 
     // 기존 BGM 정지 후 메뉴 BGM 재생
     stopBGM();
@@ -847,14 +592,14 @@ function gameWin() {
     playWinSound();
 
     // 레벨 전환 애니메이션 시작 (VICTORY!)
-    startLevelTransition('VICTORY!', () => {
+    animationManager.startLevelTransition('VICTORY!', () => {
         // 애니메이션 완료 후 게임 완전히 중지
         gameState.stop();
 
         // UI 표시
         UI.winFinalScore.textContent = gameState.score;
         UI.winScreen.classList.remove('hidden');
-        startUIPopupAnimation(UI.winScreen);
+        animationManager.startUIPopupAnimation(UI.winScreen);
     });
 
     // 통계 업데이트
@@ -956,11 +701,8 @@ function updateDisplay() {
 
 // 게임 업데이트 함수
 function update() {
-    // UI 팝업 애니메이션은 일시정지 상태에서도 업데이트
-    updateUIPopupAnimation();
-
-    // 레벨 전환 애니메이션은 항상 업데이트
-    updateLevelTransition();
+    // 애니메이션 매니저 업데이트 (활성화된 애니메이션만 업데이트)
+    animationManager.update();
 
     // 게임이 진행 중이 아니면 업데이트 안 함
     if (!gameState.isPlaying()) return;
@@ -978,7 +720,7 @@ function update() {
     if (ball.checkBottomCollision()) {
         gameState.lives--;
         updateDisplay();
-        startLifeAnimation(false);  // 생명 소실 애니메이션
+        animationManager.startLifeAnimation(false, UI.lives);  // 생명 소실 애니메이션
 
         if (gameState.lives <= 0) {
             // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
@@ -991,7 +733,7 @@ function update() {
             playGameOverSound();
 
             // 레벨 전환 애니메이션 시작 (GAME OVER)
-            startLevelTransition('GAME OVER', () => {
+            animationManager.startLevelTransition('GAME OVER', () => {
                 // 애니메이션 완료 후 게임 완전히 중지
                 gameState.stop();
 
@@ -999,7 +741,7 @@ function update() {
                 UI.finalScore.textContent = gameState.score;
                 UI.highScore.textContent = getStats().bestScore;
                 UI.gameOverScreen.classList.remove('hidden');
-                startUIPopupAnimation(UI.gameOverScreen);
+                animationManager.startUIPopupAnimation(UI.gameOverScreen);
             });
 
             // 통계 업데이트
@@ -1069,9 +811,6 @@ function update() {
 
     // 패들 애니메이션 업데이트
     updatePaddleAnimation();
-
-    // 생명력 애니메이션 업데이트
-    updateLifeAnimation();
 }
 
 // 게임 그리기 함수
@@ -1107,8 +846,8 @@ function draw() {
     // 점수 팝업 그리기 (맨 위에 표시)
     drawScorePopups(ctx);
 
-    // 레벨 전환 애니메이션 그리기 (최상위 레이어)
-    drawLevelTransition();
+    // 애니메이션 매니저 그리기 (레벨 전환 애니메이션 - 최상위 레이어)
+    animationManager.draw(ctx);
 
     // 공 발사 대기 중일 때 안내 문구 표시
     if (!ball.launched) {

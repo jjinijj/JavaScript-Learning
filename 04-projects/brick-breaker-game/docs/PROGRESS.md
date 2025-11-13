@@ -673,6 +673,45 @@ let paddleHitWaves = [];
 
 ---
 
+### ✅ Stage 20 완료 (2025-11-13): 애니메이션 시스템 통합
+
+**목표**: 게임 내 3개 애니메이션을 AnimationManager 클래스로 통합, 효율성 개선
+
+**결과**:
+- animationManager.js 생성 (355 lines)
+- game.js: 1146 → 885 lines (261줄 감소, 22.8%)
+- update() 함수 호출 최적화: 3개 함수 → 1개 메서드
+
+**AnimationManager 클래스**:
+- **통합된 애니메이션**:
+  1. 생명력 회복/소실 애니메이션 (lifeAnimation)
+  2. 레벨 전환 애니메이션 (levelTransition)
+  3. UI 팝업 애니메이션 (uiPopupAnimation)
+
+- **주요 메서드**:
+  - `startLifeAnimation(isGain, livesElement)` - 생명 애니메이션 시작
+  - `startLevelTransition(text, callback)` - 레벨 전환 시작
+  - `startUIPopupAnimation(element)` - UI 팝업 시작
+  - `hideUIPopupAnimation(element, callback)` - UI 팝업 제거
+  - `update()` - 활성화된 애니메이션만 업데이트 (효율성)
+  - `draw(ctx)` - 캔버스 애니메이션 그리기
+  - `reset()` - 모든 애니메이션 초기화
+
+- **효율성 개선**:
+  - ✅ **update() 최적화**: 활성화된 애니메이션만 업데이트
+    - 기존: `updateUIPopupAnimation()`, `updateLevelTransition()`, `updateLifeAnimation()` (항상 3개 호출)
+    - 개선: `animationManager.update()` (활성화된 것만 호출)
+  - ✅ **draw() 통합**: `animationManager.draw(ctx)` 하나로 통합
+  - ✅ **함수 호출 오버헤드 감소**: 12개 개별 함수 → 1개 클래스
+
+- **개선 사항**:
+  - 전역 변수 제거: `lifeAnimation`, `levelTransition`, `uiPopupAnimation`
+  - 함수 제거: `startLifeAnimation()`, `updateLifeAnimation()`, `getLifeDisplayOffset()`, `startLevelTransition()`, `updateLevelTransition()`, `drawLevelTransition()`, `startUIPopupAnimation()`, `updateUIPopupAnimation()`, `hideUIPopupAnimation()`, `easeOutBack()`
+  - 코드 구조 개선: 애니메이션 로직이 하나의 클래스로 캡슐화
+  - game.js 간결화: 261줄 감소
+
+---
+
 ## 버그 수정 이력
 
 ### 2025-10-28: 공이 벽에 끼이는 버그 ✅
@@ -698,8 +737,13 @@ let paddleHitWaves = [];
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
 - [x] 패들 및 공 관련 버그 2건 수정 완료
 - [x] Stage 19: 게임 시스템 OOP 리팩토링 완료 (GameState, EffectManager)
-- [ ] 디자인 패턴 적용 (공 상태 패턴)
-- [ ] Update 함수 분리
+- [x] Stage 20: 애니메이션 시스템 통합 완료 (AnimationManager)
+- [ ] Stage 21: 충돌 감지 시스템 리팩토링 (CollisionDetector)
+- [ ] Stage 22: UI 관리 시스템 + 성능 최적화 (UIManager)
+- [ ] Stage 23: 불필요한 래퍼 함수 제거
+- [ ] Stage 24: Update 함수 분리
+- [ ] Stage 25: 디자인 패턴 적용 (공 상태 패턴)
+- [ ] Stage 26: GameController 통합 (최종)
 - [ ] 선택 사항: 모바일 터치 컨트롤
 
 ## ⚠️ 프로젝트 완성 시 재검토 사항
