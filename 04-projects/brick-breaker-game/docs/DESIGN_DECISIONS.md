@@ -362,28 +362,379 @@ effectManager.activate('ballSlow', 10000, null, { /* 4개 콜백 */ });
 
 ---
 
+## Stage 21: 충돌 감지 시스템 리팩토링
+
+### 1. CollisionDetector 클래스 vs 이벤트 핸들러
+
+#### 질문
+> 충돌 처리 로직을 CollisionDetector 클래스로 분리해야 하는가?
+
+#### 결정: 이벤트 핸들러 방식 채택 (클래스 폐기)
+
+**초기 시도 - CollisionDetector 클래스**:
+```javascript
+class CollisionDetector {
+    detectBallBrickCollision(ball, brickManager) {
+        return brickManager.checkBallBrickCollision(...);  // 단순 래퍼
+    }
+    detectBallPaddleCollision(ball, paddle) {
+        return ball.checkPaddleCollision(...);  // 단순 래퍼
+    }
+}
+```
+
+**문제점**:
+- Ball, BrickManager가 이미 충돌 감지 메서드 보유
+- 단순 래퍼 클래스는 불필요한 추상화 레이어 (YAGNI 원칙 위배)
+- 실제 필요한 건 충돌 **처리** 로직의 분리, **감지**는 이미 존재
+
+**사용자 피드백**:
+> "수정한게 의미가 있는 수정이야? 함수 하나 분리했을뿐인데?"
+
+**채택한 방식 - 이벤트 핸들러**:
+```javascript
+// 메인 충돌 감지 루프
+function checkCollisions(wallCollision) {
+    const brick = brickManager.checkBallBrickCollision(...);  // 직접 호출
+    if (brick) {
+        onBrickHit(brick);  // 이벤트 처리
+        return;
+    }
+
+    if (wallCollision) {
+        playWallHitSound();
+    }
+
+    if (ball.checkPaddleCollision(...)) {  // 직접 호출
+        onPaddleHit();  // 이벤트 처리
+    } else if (ball.checkBottomCollision()) {  // 직접 호출
+        onLifeLost();  // 이벤트 처리
+    }
+}
+
+// 이벤트 핸들러들
+function onBrickHit(brick) { /* 벽돌 충돌 처리 */ }
+function onPaddleHit() { /* 패들 충돌 처리 */ }
+function onLifeLost() { /* 생명 손실 처리 */ }
+```
+
+**이벤트 핸들러 방식의 장점**:
+1. ✅ **YAGNI 원칙**: 필요하지 않은 추상화 제거
+2. ✅ **단일 책임 원칙**: 각 핸들러가 하나의 이벤트만 처리
+3. ✅ **명확한 네이밍**: `on~` 스타일로 이벤트 처리 명확
+4. ✅ **직접 호출**: 불필요한 레이어 없이 직접 접근
+
+**교훈**:
+- 클래스가 항상 답은 아니다
+- 추상화는 명확한 이유가 있을 때만
+- YAGNI: You Aren't Gonna Need It
+
+**결론**: 불필요한 추상화 제거 = 더 나은 코드 ✅
+
+---
+
+### 2. 충돌 우선순위 설계
+
+#### 질문
+> 충돌 감지 순서와 if-else 구조를 어떻게 설계해야 하는가?
+
+#### 결정: 물리적 우선순위 + 배타성 고려
+
+**초기 설계**:
+```javascript
+// 벽돌 → 벽 → 하단 → 패들 (else-if로 모두 연결)
+if (brick) {
+    onBrickHit(brick);
+} else {
+    const wallCollision = ball.update(...);
+    if (wallCollision) {
+        playWallHitSound();
+    } else if (ball.checkBottomCollision()) {
+        onLifeLost();
+    } else if (ball.checkPaddleCollision(...)) {
+        onPaddleHit();
+    }
+}
+```
+
+**문제점**:
+- 하단 충돌이 패들 충돌보다 먼저 체크 (논리적으로 이상)
+- 벽 충돌이 else-if에 묶여있어 다른 충돌과 동시 발생 불가
+
+**개선된 설계**:
+```javascript
+// 1. 벽돌 충돌 (최우선, early return)
+const brick = brickManager.checkBallBrickCollision(...);
+if (brick) {
+    onBrickHit(brick);
+    return;
+}
+
+// 2. 벽 충돌 (독립적 처리)
+if (wallCollision) {
+    playWallHitSound();
+}
+
+// 3. 패들 vs 하단 충돌 (배타적 if-else)
+if (ball.checkPaddleCollision(...)) {
+    onPaddleHit();
+} else if (ball.checkBottomCollision()) {
+    onLifeLost();
+}
+```
+
+**설계 원칙**:
+
+1. **벽돌 충돌 (최우선)**:
+   - 게임의 핵심 메커니즘
+   - early return으로 불필요한 체크 방지
+
+2. **벽 충돌 (독립적)**:
+   - 좌우/상단 벽은 언제든 충돌 가능
+   - 다른 충돌과 동시 발생 가능 (if 단독)
+
+3. **패들 vs 하단 (배타적)**:
+   - 물리적으로 동시 발생 불가능
+   - 패들이 하단 위에 있으므로 패들 먼저 체크
+   - if-else로 배타성 명확히 표현
+
+**사용자 제안**:
+> "패들 충돌이랑 하단 충돌은 동시에 일어날 수 없지않아?"
+
+**결론**: 물리적 현실 반영 + 명확한 우선순위 = 직관적 코드 ✅
+
+---
+
+### 3. 함수 네이밍 - handle vs on
+
+#### 질문
+> 충돌 처리 함수 이름에 `handle` prefix가 적절한가?
+
+#### 결정: `on~` 이벤트 스타일 채택
+
+**초기 네이밍 (handle prefix)**:
+```javascript
+function handleCollision() { ... }
+function handleBrickCollision(brick) { ... }
+function handlePaddleCollision() { ... }
+function handleBottomCollision() { ... }
+```
+
+**문제점**:
+- `handle`이 일반적이고 애매함
+- 이벤트 핸들러임을 명확히 표현하지 못함
+
+**사용자 질문**:
+> "함수명 handle이 들어간건 네가 수정한걸 따라한건데 handle이 들어가는게 맞아?"
+
+**대안 검토**:
+
+1. **이벤트 스타일 (on~)** - 채택 ✅
+```javascript
+onBrickHit(brick)
+onPaddleHit()
+onLifeLost()
+```
+- 명확한 이벤트 핸들러 표현
+- JavaScript 표준 관례 (onClick, onSubmit 등)
+
+2. **액션 스타일**
+```javascript
+destroyBrick(brick)
+bounceBallOffPaddle()
+loseLife()
+```
+- 동작 중심 표현
+- 이벤트 핸들러임이 불명확
+
+**최종 네이밍**:
+```javascript
+checkCollisions()     // 메인 충돌 감지 루프 (check~)
+onBrickHit(brick)     // 벽돌 충돌 이벤트 (on~)
+onPaddleHit()         // 패들 충돌 이벤트 (on~)
+onLifeLost()          // 생명 손실 이벤트 (on~)
+```
+
+**네이밍 규칙**:
+- `check~`: 상태 확인, 검증 (반환값 있음)
+- `on~`: 이벤트 핸들러 (반환값 없음)
+- `handle~`: 일반적인 처리 (애매함, 지양)
+
+**결론**: 명확한 의미 전달 = 더 나은 네이밍 ✅
+
+---
+
+## Stage 21.5: Ball.update() 메서드 분리
+
+### 1. update() 메서드의 단일 책임 원칙
+
+#### 질문
+> `ball.update()`가 벽 충돌 정보를 반환하는 것이 적절한가?
+
+#### 결정: 위치 업데이트와 충돌 감지 분리
+
+**기존 설계**:
+```javascript
+// ball.js
+update(paddleX, paddleWidth) {
+    if (!this.launched) { return null; }  // 발사 전: null
+    this.x += this.speedX;
+    this.y += this.speedY;
+    return this.checkWallCollision();  // 발사 후: 충돌 정보
+}
+
+// game.js
+const wallCollision = ball.update(paddle.x, paddleWidth);
+checkCollisions(wallCollision);
+```
+
+**문제점**:
+1. **두 가지 책임**: 위치 업데이트 + 벽 충돌 감지
+2. **반환값 혼재**: 발사 전 `null`, 발사 후 충돌 정보
+3. **네이밍 불명확**: `update()`에서 충돌 정보 반환 예상 어려움
+4. **부수 효과 혼재**: 상태 변경(위치) + 정보 반환(충돌)
+
+**사용자 질문**:
+> "ball.update에서 항상 wallCollision을 return해주는게 맞을까?"
+
+**개선된 설계**:
+```javascript
+// ball.js - 순수하게 위치만 업데이트 (void)
+update(paddleX, paddleWidth) {
+    if (!this.launched) { return; }
+    this.x += this.speedX;
+    this.y += this.speedY;
+}
+
+// game.js - 명시적 분리
+ball.update(paddle.x, paddleWidth);  // 위치 업데이트
+const wallCollision = ball.checkWallCollision();  // 충돌 감지
+checkCollisions(wallCollision);  // 충돌 처리
+```
+
+**개선 효과**:
+1. ✅ **단일 책임 원칙**: 각 메서드가 하나의 일만 수행
+2. ✅ **명확한 네이밍**: 메서드 이름이 역할을 정확히 표현
+3. ✅ **반환값 일관성**: void 반환으로 혼재 문제 해결
+4. ✅ **코드 가독성**: 위치 업데이트 → 충돌 감지 흐름 명시적
+
+**설계 원칙**:
+- **Command-Query Separation (CQS)**:
+  - Command: 상태를 변경, 반환값 없음 (`update()`)
+  - Query: 정보를 반환, 상태 변경 없음 (`checkWallCollision()`)
+- **메서드 네이밍**: 수행 작업을 명확히 표현
+- **부수 효과 분리**: 상태 변경과 정보 조회를 분리
+
+**결론**: 단일 책임 = 명확한 코드 ✅
+
+---
+
+### 2. ball.update() 이중 호출 버그
+
+#### 문제
+> 공 속도가 갑자기 2배로 빨라짐
+
+#### 원인
+`ball.update()`가 두 곳에서 호출되어 위치가 2배로 업데이트됨:
+
+```javascript
+// update() 함수
+const wallCollision = ball.update(paddle.x, paddleWidth);  // 1번째 호출
+
+// checkCollisions() 함수 내부
+const wallCollision = ball.update(paddle.x, paddleWidth);  // 2번째 호출
+```
+
+**초기 해결 시도 (실패)**:
+```javascript
+// checkCollisions() 내부에서만 ball.update() 호출
+function checkCollisions() {
+    ball.update(...);  // 여기서 호출
+    const brick = brickManager.checkBallBrickCollision(...);
+    if (brick) {
+        onBrickHit(brick);
+        return;  // early return → ball.update() 누락!
+    }
+}
+```
+
+**문제점**: 벽돌 충돌 시 early return으로 `ball.update()` 누락
+
+**최종 해결**:
+```javascript
+// update() 함수에서만 ball.update() 호출
+function update() {
+    ball.update(paddle.x, paddleWidth);  // 위치 업데이트 (항상)
+    const wallCollision = ball.checkWallCollision();  // 충돌 감지
+    checkCollisions(wallCollision);  // wallCollision을 매개변수로 전달
+}
+
+// checkCollisions()는 매개변수로 받음
+function checkCollisions(wallCollision) {
+    const brick = brickManager.checkBallBrickCollision(...);
+    if (brick) {
+        onBrickHit(brick);
+        return;  // 이제 안전함 (ball.update는 이미 실행됨)
+    }
+
+    if (wallCollision) {
+        playWallHitSound();
+    }
+}
+```
+
+**해결 포인트**:
+1. ✅ `ball.update()`는 **한 곳(update 함수)에서만** 호출
+2. ✅ `wallCollision`은 **매개변수로 전달**
+3. ✅ early return해도 위치 업데이트는 이미 완료됨
+
+**교훈**:
+- 상태 변경 함수는 한 곳에서만 호출
+- 결과값이 필요하면 매개변수로 전달
+- early return 전에 필수 작업 완료 확인
+
+**결론**: 호출 흐름 명확화 = 버그 방지 ✅
+
+---
+
 ## 설계 원칙 요약
 
 ### 1. 단순함 우선 (KISS - Keep It Simple, Stupid)
 - GameState: 클래스 대신 단순 객체
 - 콤보 시스템: 과도한 기능 제거
+- CollisionDetector: 불필요한 추상화 제거 (YAGNI)
 
 ### 2. 적절한 추상화
 - EffectManager: 복잡한 로직 → 클래스 사용
 - 객체 참조: JavaScript 표준 패턴 활용
+- 이벤트 핸들러: 클래스 대신 함수로 충분
 
-### 3. 성능 고려
+### 3. 단일 책임 원칙 (Single Responsibility Principle)
+- Ball.update(): 위치 업데이트만
+- Ball.checkWallCollision(): 충돌 감지만
+- 이벤트 핸들러: 각 함수가 하나의 이벤트만 처리
+
+### 4. 명확한 네이밍
+- `check~`: 상태 확인/검증 (반환값 있음)
+- `on~`: 이벤트 핸들러 (반환값 없음)
+- `update~`: 상태 변경 (반환값 없음)
+- Command-Query Separation (CQS) 원칙
+
+### 5. 성능 고려
 - 콜백 패턴: 초기화 시 설정으로 오버헤드 최소화
 - 1D 배열: 메모리 효율성
+- early return: 불필요한 체크 방지
 
-### 4. 유지보수성
+### 6. 유지보수성
 - 관심사 분리: 각 파일이 하나의 책임
 - 명확한 인터페이스: 메서드 이름과 역할 명확화
+- 물리적 현실 반영: 충돌 우선순위 직관적 설계
 
 ---
 
 ## 참고
 
-- **작성일**: 2025-11-13
+- **최초 작성일**: 2025-11-13
+- **최종 업데이트**: 2025-11-14 (Stage 21, 21.5 추가)
 - **프로젝트**: 벽돌깨기 게임
 - **관련 문서**: PROGRESS.md, REFACTORING_TODO.md
