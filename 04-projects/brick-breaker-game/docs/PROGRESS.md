@@ -797,6 +797,64 @@ let paddleHitWaves = [];
 
 ---
 
+### ✅ Stage 21.5 완료 (2025-11-14): Ball.update() 메서드 분리
+
+**목표**: Ball.update() 메서드를 위치 업데이트와 벽 충돌 감지로 분리하여 단일 책임 원칙 적용
+
+**결과**:
+- ball.js: 193 lines (변경 없음, 구조 개선)
+- game.js: 906 lines (3줄 증가, 명확성 향상)
+
+**문제점**:
+- `ball.update()`가 두 가지 책임 보유: 위치 업데이트 + 벽 충돌 감지
+- 반환값이 애매함: 발사 전 `null`, 발사 후 충돌 정보
+- 네이밍이 불명확: `update()`라는 이름에서 충돌 정보 반환을 예상하기 어려움
+
+**구현 내용**:
+
+1. **ball.js 수정**:
+   ```javascript
+   // Before: 위치 업데이트 + 벽 충돌 감지를 함께 처리
+   update(paddleX, paddleWidth) {
+       if (!this.launched) { ... return null; }
+       this.x += this.speedX;
+       this.y += this.speedY;
+       return this.checkWallCollision(); // 반환값 혼재
+   }
+
+   // After: 순수하게 위치만 업데이트 (void)
+   update(paddleX, paddleWidth) {
+       if (!this.launched) { ... return; }
+       this.x += this.speedX;
+       this.y += this.speedY;
+   }
+   ```
+
+2. **game.js 수정**:
+   ```javascript
+   // Before: update()에서 충돌 정보까지 반환
+   const wallCollision = ball.update(paddle.x, paddleWidth);
+   checkCollisions(wallCollision);
+
+   // After: 위치 업데이트와 충돌 감지를 명시적으로 분리
+   ball.update(paddle.x, paddleWidth);  // 위치만 업데이트
+   const wallCollision = ball.checkWallCollision();  // 벽 충돌 감지
+   checkCollisions(wallCollision);  // 충돌 처리
+   ```
+
+**개선 효과**:
+- ✅ **단일 책임 원칙**: `update()`는 위치만, `checkWallCollision()`은 충돌만
+- ✅ **명확한 네이밍**: 각 메서드의 역할이 명확함
+- ✅ **코드 가독성**: 위치 업데이트 → 충돌 감지 흐름이 명시적
+- ✅ **반환값 일관성**: void 반환으로 발사 전/후 반환값 혼재 문제 해결
+
+**설계 원칙**:
+- 메서드는 한 가지 일만 해야 함 (Single Responsibility Principle)
+- 메서드 이름은 수행하는 작업을 명확히 표현해야 함
+- 부수 효과(side effect)와 반환값을 명확히 분리
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
@@ -804,7 +862,7 @@ let paddleHitWaves = [];
 - [x] Stage 19: 게임 시스템 OOP 리팩토링 완료 (GameState, EffectManager)
 - [x] Stage 20: 애니메이션 시스템 통합 완료 (AnimationManager)
 - [x] Stage 21: 충돌 감지 시스템 리팩토링 완료 (이벤트 핸들러 방식)
-- [ ] Stage 21.5: Ball.update() 메서드 분리 (위치 업데이트 vs 충돌 감지)
+- [x] Stage 21.5: Ball.update() 메서드 분리 완료 (위치 업데이트 vs 충돌 감지)
 - [ ] Stage 22: UI 관리 시스템 + 성능 최적화 (UIManager)
 - [ ] Stage 23: 불필요한 래퍼 함수 제거
 - [ ] Stage 24: Update 함수 분리
