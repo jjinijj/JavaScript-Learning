@@ -732,13 +732,79 @@ let paddleHitWaves = [];
 
 ---
 
+### ✅ Stage 21 완료 (2025-11-14): 충돌 감지 시스템 리팩토링
+
+**목표**: 충돌 감지 로직을 이벤트 핸들러로 분리하여 단일 책임 원칙 적용
+
+**결과**:
+- game.js: 885 → 약 850 lines (35줄 감소)
+- 충돌 처리 함수를 이벤트 스타일로 재구성
+- 충돌 우선순위 명확화
+
+**주요 결정사항**:
+- ❌ CollisionDetector 클래스 생성 → 불필요한 추상화 (YAGNI 원칙)
+  - Ball/BrickManager가 이미 충돌 감지 메서드 보유
+  - 단순 래퍼 클래스는 코드만 복잡하게 만듦
+- ✅ 이벤트 핸들러 방식 채택
+  - 50줄의 `collisionDetection()` 함수를 역할별로 분리
+  - 각 충돌 이벤트에 대한 명확한 처리 함수
+
+**구현 내용**:
+
+1. **충돌 감지 메인 함수**:
+   - `checkCollisions(wallCollision)` - 충돌 감지 루프 (메인)
+
+2. **이벤트 핸들러 함수들**:
+   - `onBrickHit(brick)` - 벽돌 충돌 시 처리
+     - 공 반사, 벽돌 파괴, 사운드, 파티클, 점수, 아이템 드롭, 승리 체크
+   - `onPaddleHit()` - 패들 충돌 시 처리
+     - 사운드, 충격파 이펙트
+   - `onLifeLost()` - 생명 손실 시 처리
+     - 생명 감소, 애니메이션, 게임 오버 체크
+
+3. **충돌 우선순위 최적화**:
+   ```javascript
+   // 1. 벽돌 충돌 (최우선)
+   if (brick) {
+       onBrickHit(brick);
+       return; // early return으로 불필요한 체크 방지
+   }
+
+   // 2. 벽 충돌 (독립적 처리)
+   if (wallCollision) {
+       playWallHitSound();
+   }
+
+   // 3. 패들 vs 하단 충돌 (배타적, if-else)
+   if (ball.checkPaddleCollision(...)) {
+       onPaddleHit();
+   } else if (ball.checkBottomCollision()) {
+       onLifeLost();
+   }
+   ```
+
+4. **버그 수정**:
+   - `ball.update()` 이중 호출 문제 해결
+   - 벽돌 충돌 시 공 위치 업데이트 누락 방지
+   - `wallCollision`을 매개변수로 전달하여 중복 호출 제거
+
+**개선 효과**:
+- ✅ 단일 책임 원칙 적용 (각 함수가 하나의 이벤트만 처리)
+- ✅ 코드 가독성 향상 (이벤트별 처리 로직 명확)
+- ✅ 불필요한 추상화 제거 (YAGNI 원칙)
+- ✅ 충돌 우선순위 명확화 (early return, if-else)
+- ✅ 네이밍 개선 (이벤트 스타일: `on~`)
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
 - [x] 패들 및 공 관련 버그 2건 수정 완료
 - [x] Stage 19: 게임 시스템 OOP 리팩토링 완료 (GameState, EffectManager)
 - [x] Stage 20: 애니메이션 시스템 통합 완료 (AnimationManager)
-- [ ] Stage 21: 충돌 감지 시스템 리팩토링 (CollisionDetector)
+- [x] Stage 21: 충돌 감지 시스템 리팩토링 완료 (이벤트 핸들러 방식)
+- [ ] Stage 21.5: Ball.update() 메서드 분리 (위치 업데이트 vs 충돌 감지)
 - [ ] Stage 22: UI 관리 시스템 + 성능 최적화 (UIManager)
 - [ ] Stage 23: 불필요한 래퍼 함수 제거
 - [ ] Stage 24: Update 함수 분리

@@ -82,11 +82,11 @@ import {
     resetItems as resetItemsModule
 } from './items.js';
 
-import { BrickManager } from './bricks.js';
-
 import {
     checkRectCircleCollision
 } from './physics.js';
+
+import { BrickManager } from './bricks.js';
 
 import { Ball } from './ball.js';
 import { Paddle } from './paddle.js';
@@ -629,57 +629,139 @@ function resetPaddle() {
 // 5단계: 충돌 감지 (physics.js에서 import)
 // ========================================
 
-// 벽돌-공 충돌 감지
-function collisionDetection() {
+function checkCollisions(wallCollision) {
     const ballPos = ball.getPosition();
+    updateBallTrail(ballPos.x, ballPos.y);
 
-    // BrickManager에서 충돌하는 벽돌 찾기
-    const brick = brickManager.checkBallBrickCollision(ballPos.x, ballPos.y, ball.radius, checkRectCircleCollision);
-
+    // 1. 벽돌 충돌 (최우선)
+    const brick = brickManager.checkBallBrickCollision(
+        ballPos.x,
+        ballPos.y,
+        ball.radius,
+        checkRectCircleCollision
+    );
     if (brick) {
-        // 공 방향 반전
-        ball.speedY = -ball.speedY;
+        onBrickHit(brick);
+        return;
+    }
 
-        // 벽돌 파괴 (BrickManager를 통해 관리)
-        brickManager.destroyBrick(brick);
+    // 2. 벽 충돌 (독립적으로 처리)
+    if (wallCollision) {
+        playWallHitSound();
+    }
 
-        // 사운드 재생
-        playBrickBreakSound();
+    // 3. 패들 충돌 vs 하단 충돌 (배타적)
+    const paddleWidth = getAnimatedPaddleWidth();
+    if (ball.checkPaddleCollision(paddle.x, paddle.y, paddleWidth, paddle.height)) {
+        onPaddleHit();
+    } else if (ball.checkBottomCollision()) {
+        onLifeLost();
+    }
+}
 
-        // 입자 효과 생성 (벽돌 중앙에서)
-        const brickCenterX = brick.x + brick.width / 2;
-        const brickCenterY = brick.y + brick.height / 2;
-        createParticles(brickCenterX, brickCenterY, brick.color);
+function onPaddleHit(){
+    // 패들 충돌 사운드
+    playPaddleHitSound();
 
-        // 벽돌 조각 애니메이션 생성
-        createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
+    // 패들 히트 충격파 생성 (충돌 위치에서)
+    const ballPos = ball.getPosition();
+    createPaddleHitWave(ballPos.x, ballPos.y);
 
-        // 점수 증가
-        gameState.score += 10;
-        updateDisplay();
+}
 
-        // 점수 팝업 생성
-        createScorePopup(brickCenterX, brickCenterY, 10);
+function onLifeLost(){
+    gameState.lives--;
+    updateDisplay();
+    animationManager.startLifeAnimation(false, UI.lives);  // 생명 소실 애니메이션
 
-        // 통계 업데이트 (파괴한 벽돌 총 개수)
+    if (gameState.lives <= 0) {
+        // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
+        gameState.pause();
+
+        // BGM 정지
+        stopBGM();
+
+        // 게임 오버 사운드
+        playGameOverSound();
+
+        // 레벨 전환 애니메이션 시작 (GAME OVER)
+        animationManager.startLevelTransition('GAME OVER', () => {
+            // 애니메이션 완료 후 게임 완전히 중지
+            gameState.stop();
+
+            // UI 표시
+            UI.finalScore.textContent = gameState.score;
+            UI.highScore.textContent = getStats().bestScore;
+            UI.gameOverScreen.classList.remove('hidden');
+            animationManager.startUIPopupAnimation(UI.gameOverScreen);
+        });
+
+        // 통계 업데이트
         updateStats({
-            gameCompleted: false,
-            score: 0,
-            bricksDestroyed: 1
+            gameCompleted: true,
+            score: gameState.score,
+            bricksDestroyed: 0
         });
         updateStatsDisplay();
 
-        console.log('벽돌 파괴:', brick.col, brick.row, '점수:', gameState.score);
+        console.log('게임 오버! 최종 점수:', gameState.score, '총 게임 수:', getStats().totalGames);
+    } else {
+        // 생명 손실 사운드
+        playLifeLostSound();
 
-        // 아이템 드롭 (확률적)
-        if (Math.random() < ITEM.DROP_CHANCE) {
-            createItem(brick.x + brick.width / 2, brick.y);
-        }
+        // 공, 패들, 아이템 리셋
+        resetBall();
+        resetPaddle();
+        resetItems();  // 아이템 및 효과 초기화
+        console.log('생명 감소. 남은 생명:', gameState.lives);
+    }
+}
 
-        // 게임 승리 확인 (모든 벽돌 파괴)
-        if (brickManager.checkAllCleared()) {
-            gameWin();
-        }
+
+// 벽돌-공 충돌 처리
+function onBrickHit(brick) {
+    // 공 방향 반전
+    ball.speedY = -ball.speedY;
+
+    // 벽돌 파괴 (BrickManager를 통해 관리)
+    brickManager.destroyBrick(brick);
+
+    // 사운드 재생
+    playBrickBreakSound();
+
+    // 입자 효과 생성 (벽돌 중앙에서)
+    const brickCenterX = brick.x + brick.width / 2;
+    const brickCenterY = brick.y + brick.height / 2;
+    createParticles(brickCenterX, brickCenterY, brick.color);
+
+    // 벽돌 조각 애니메이션 생성
+    createBrickFragments(brick.x, brick.y, brick.width, brick.height, brick.color);
+
+    // 점수 증가
+    gameState.score += 10;
+    updateDisplay();
+
+    // 점수 팝업 생성
+    createScorePopup(brickCenterX, brickCenterY, 10);
+
+    // 통계 업데이트 (파괴한 벽돌 총 개수)
+    updateStats({
+        gameCompleted: false,
+        score: 0,
+        bricksDestroyed: 1
+    });
+    updateStatsDisplay();
+
+    console.log('벽돌 파괴:', brick.col, brick.row, '점수:', gameState.score);
+
+    // 아이템 드롭 (확률적)
+    if (Math.random() < ITEM.DROP_CHANCE) {
+        createItem(brick.x + brick.width / 2, brick.y);
+    }
+
+    // 게임 승리 확인 (모든 벽돌 파괴)
+    if (brickManager.checkAllCleared()) {
+        gameWin();
     }
 }
 
@@ -711,70 +793,6 @@ function update() {
     const paddleWidth = getAnimatedPaddleWidth();
     const wallCollision = ball.update(paddle.x, paddleWidth);
 
-    // 벽 충돌 사운드
-    if (wallCollision) {
-        playWallHitSound();
-    }
-
-    // 하단 벽 충돌 (생명 감소)
-    if (ball.checkBottomCollision()) {
-        gameState.lives--;
-        updateDisplay();
-        animationManager.startLifeAnimation(false, UI.lives);  // 생명 소실 애니메이션
-
-        if (gameState.lives <= 0) {
-            // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
-            gameState.pause();
-
-            // BGM 정지
-            stopBGM();
-
-            // 게임 오버 사운드
-            playGameOverSound();
-
-            // 레벨 전환 애니메이션 시작 (GAME OVER)
-            animationManager.startLevelTransition('GAME OVER', () => {
-                // 애니메이션 완료 후 게임 완전히 중지
-                gameState.stop();
-
-                // UI 표시
-                UI.finalScore.textContent = gameState.score;
-                UI.highScore.textContent = getStats().bestScore;
-                UI.gameOverScreen.classList.remove('hidden');
-                animationManager.startUIPopupAnimation(UI.gameOverScreen);
-            });
-
-            // 통계 업데이트
-            updateStats({
-                gameCompleted: true,
-                score: gameState.score,
-                bricksDestroyed: 0
-            });
-            updateStatsDisplay();
-
-            console.log('게임 오버! 최종 점수:', gameState.score, '총 게임 수:', getStats().totalGames);
-        } else {
-            // 생명 손실 사운드
-            playLifeLostSound();
-
-            // 공, 패들, 아이템 리셋
-            resetBall();
-            resetPaddle();
-            resetItems();  // 아이템 및 효과 초기화
-            console.log('생명 감소. 남은 생명:', gameState.lives);
-        }
-    }
-
-    // 패들-공 충돌 감지
-    if (ball.checkPaddleCollision(paddle.x, paddle.y, paddleWidth, paddle.height)) {
-        // 패들 충돌 사운드
-        playPaddleHitSound();
-
-        // 패들 히트 충격파 생성 (충돌 위치에서)
-        const ballPos = ball.getPosition();
-        createPaddleHitWave(ballPos.x, ballPos.y);
-    }
-
     // 패들 이동 (키보드)
     if (isRightPressed()) {
         paddle.move('right', paddleWidth);
@@ -782,8 +800,8 @@ function update() {
         paddle.move('left', paddleWidth);
     }
 
-    // 벽돌-공 충돌 감지
-    collisionDetection();
+    // 벽돌-공 충돌 처리
+    checkCollisions(wallCollision);
 
     // 아이템 업데이트
     updateItemsModule(paddle.x, getPaddleWidth, applyItemEffect);

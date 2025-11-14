@@ -79,20 +79,21 @@
     ```
 
 ## 6. 충돌 감지 시스템 리팩토링 (단일 책임 원칙)
-- [ ] **CollisionDetector 클래스 생성**
-  - 현재 문제: `collisionDetection()` 함수가 너무 많은 책임
+- [x] **충돌 처리 이벤트 핸들러 분리** ✅ (Stage 21 완료)
+  - ~~CollisionDetector 클래스 생성~~ → 불필요한 추상화 레이어 (YAGNI 원칙)
+  - 기존 문제: `collisionDetection()` 함수가 너무 많은 책임
     - 충돌 감지 + 공 상태 변경 + 벽돌 파괴 + 사운드 + 애니메이션 + 점수 + UI 업데이트 + 아이템 드롭 + 게임 승리 체크
     - 50줄의 단일 함수에 10개 이상의 작업 혼재
-  - 개선: 충돌 감지와 이벤트 처리 분리
-    ```javascript
-    class CollisionDetector {
-      detectBallBrickCollision(ball, brickManager) { ... }
-      detectBallPaddleCollision(ball, paddle) { ... }
-      detectItemPaddleCollision(items, paddle) { ... }
-    }
-    ```
-  - 게임 로직은 GameController에서 처리
-  - **효과**: 테스트 용이성, 재사용성, 코드 가독성 향상
+  - 개선: 충돌 처리를 이벤트 스타일 핸들러로 분리
+    - `checkCollisions()` - 메인 충돌 감지 루프
+    - `onBrickHit(brick)` - 벽돌 충돌 시 처리
+    - `onPaddleHit()` - 패들 충돌 시 처리
+    - `onLifeLost()` - 생명 손실 시 처리
+  - 충돌 우선순위 명확화:
+    1. 벽돌 충돌 (최우선, early return)
+    2. 벽 충돌 (독립적 처리)
+    3. 패들/하단 충돌 (배타적, if-else)
+  - **효과**: 각 이벤트 핸들러의 책임 명확, 코드 가독성 향상, 불필요한 추상화 제거
 
 ## 7. UI 관리 시스템 (OOP + 성능 최적화)
 - [ ] **UIManager 클래스 생성**
