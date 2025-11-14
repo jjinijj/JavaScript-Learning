@@ -47,10 +47,9 @@ export class Ball {
     }
 
     /**
-     * 공 위치 업데이트
+     * 공 위치 업데이트 (순수하게 위치만 업데이트)
      * @param {number} paddleX - 패들 X 좌표 (발사 전 패들 위에 고정용)
      * @param {number} paddleWidth - 패들 너비 (발사 전 패들 위에 고정용)
-     * @returns {string|null} 벽 충돌 정보 ('left', 'right', 'top', null)
      */
     update(paddleX, paddleWidth) {
         // 공이 발사되지 않았으면 패들 위에 고정
@@ -58,15 +57,12 @@ export class Ball {
             this.x = paddleX + paddleWidth / 2;
             // 패들 위 정확한 위치: PADDLE.HEIGHT(15) + 10(여백) + BALL.RADIUS + 1(간격)
             this.y = CANVAS.HEIGHT - PADDLE.HEIGHT - 10 - this.radius - 1;
-            return null;
+            return;
         }
 
         // 공 이동
         this.x += this.speedX;
         this.y += this.speedY;
-
-        // 벽 충돌 처리 및 결과 반환
-        return this.checkWallCollision();
     }
 
     /**

@@ -789,9 +789,12 @@ function update() {
     // 게임이 진행 중이 아니면 업데이트 안 함
     if (!gameState.isPlaying()) return;
 
-    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동 + 벽 충돌)
+    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동)
     const paddleWidth = getAnimatedPaddleWidth();
-    const wallCollision = ball.update(paddle.x, paddleWidth);
+    ball.update(paddle.x, paddleWidth);
+
+    // 공-벽 충돌 감지
+    const wallCollision = ball.checkWallCollision();
 
     // 패들 이동 (키보드)
     if (isRightPressed()) {
@@ -800,7 +803,7 @@ function update() {
         paddle.move('left', paddleWidth);
     }
 
-    // 벽돌-공 충돌 처리
+    // 충돌 처리
     checkCollisions(wallCollision);
 
     // 아이템 업데이트
