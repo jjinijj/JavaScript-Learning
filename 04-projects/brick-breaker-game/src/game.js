@@ -93,6 +93,7 @@ import { Paddle } from './paddle.js';
 import { gameState } from './gameState.js';
 import { EffectManager } from './effectManager.js';
 import { AnimationManager } from './animationManager.js';
+import { UIManager } from './uiManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -108,6 +109,7 @@ let paddle;
 let brickManager;
 let effectManager;
 let animationManager;
+let uiManager;
 
 // ========================================
 // 6단계: 게임 상태 (gameState.js에서 import)
@@ -155,8 +157,8 @@ function applyItemEffect(itemType) {
         case 'extra_life':
             if (gameState.lives < GAME.MAX_LIVES) {
                 gameState.lives++;
-                updateDisplay();
-                animationManager.startLifeAnimation(true, UI.lives);  // 생명 획득 애니메이션
+                uiManager.updateDisplay(gameState.score, gameState.lives);
+                animationManager.startLifeAnimation(true, uiManager.getLivesElement());  // 생명 획득 애니메이션
                 console.log('❤️ 생명 +1');
             } else {
                 console.log('❤️ 생명이 이미 최대입니다 (최대 ' + GAME.MAX_LIVES + '개)');
@@ -296,9 +298,12 @@ async function init() {
     // 애니메이션 매니저 초기화
     animationManager = new AnimationManager();
 
+    // UI 매니저 초기화
+    uiManager = new UIManager();
+
     // 게임 상태 초기화
     gameState.reset();
-    updateDisplay();
+    uiManager.updateDisplay(gameState.score, gameState.lives);
 
     // 입력 이벤트 핸들러 설정
     setupInputHandlers(canvas, {
@@ -322,17 +327,17 @@ async function init() {
 
     // 통계 로드
     loadStats();
-    updateStatsDisplay();
+    uiManager.updateStats(getStats());
 
     // 볼륨 로드
     loadVolume();
-    updateVolumeUI();
+    uiManager.updateVolume(getVolume());
 
     // 음소거 상태 로드
     const savedMuted = localStorage.getItem('brickBreakerMuted');
     if (savedMuted !== null) {
         setMuted(savedMuted === 'true');
-        updateMuteButton();
+        uiManager.updateMuteButton(getMuted(), t('muteBtn'));
     }
 
     // UI 버튼 이벤트 등록
@@ -351,7 +356,7 @@ async function init() {
     UI.languageSelect.value = getCurrentLanguage(); // 현재 언어로 설정
     UI.languageSelect.addEventListener('change', (e) => {
         playClickSound();
-        setLanguage(e.target.value, updateMuteButton);
+        setLanguage(e.target.value, () => uiManager.updateMuteButton(getMuted(), t('muteBtn')));
     });
 
     // 테마 선택 이벤트 등록
@@ -389,42 +394,10 @@ async function init() {
 
 // 통계 저장
 // 통계 표시 업데이트
-function updateStatsDisplay() {
-    const stats = getStats();
-    UI.totalGames.textContent = stats.totalGames;
-    UI.bestScore.textContent = stats.bestScore;
-    UI.totalBricks.textContent = stats.totalBricks;
-}
-
-// ========================================
-// UI 업데이트 함수
-// ========================================
-
-// 볼륨 슬라이더 UI 업데이트
-function updateVolumeUI() {
-    const volume = getVolume();
-    if (UI.bgmVolume) {
-        UI.bgmVolume.value = Math.round(volume.BGM * 100);
-        UI.bgmVolumeValue.textContent = Math.round(volume.BGM * 100) + '%';
-    }
-    if (UI.sfxVolume) {
-        UI.sfxVolume.value = Math.round(volume.SFX * 100);
-        UI.sfxVolumeValue.textContent = Math.round(volume.SFX * 100) + '%';
-    }
-}
-
-// 음소거 버튼 텍스트 업데이트
-function updateMuteButton() {
-    if (!UI.muteBtn) return;
-
-    const icon = getMuted() ? '🔇' : '🔊';
-    UI.muteBtn.textContent = `${icon} ${t('muteBtn')}`;
-}
-
 // 음소거 토글 (게임 상태에 따른 BGM 처리 포함)
 function handleMuteToggle() {
     const muted = toggleMute();
-    updateMuteButton();
+    uiManager.updateMuteButton(muted, t('muteBtn'));
 
     // 음소거 해제 시 게임 상태에 따라 적절한 BGM 재생
     if (!muted) {
@@ -439,13 +412,13 @@ function handleMuteToggle() {
 // BGM 볼륨 변경 (UI 업데이트 포함)
 function handleBGMVolumeChange(value) {
     setBGMVolume(value);
-    updateVolumeUI();
+    uiManager.updateVolume(getVolume());
 }
 
 // 효과음 볼륨 변경 (UI 업데이트 및 테스트 사운드 포함)
 function handleSFXVolumeChange(value) {
     setSFXVolume(value);
-    updateVolumeUI();
+    uiManager.updateVolume(getVolume());
     playClickSound(); // 테스트 사운드
 }
 
@@ -472,9 +445,7 @@ function resetItems() {
     animationManager.reset();
 
     // 생명력 애니메이션 CSS 클래스 제거
-    if (UI.lives) {
-        UI.lives.classList.remove('life-gain', 'life-loss');
-    }
+    uiManager.resetLifeAnimation();
 
     // 효과 초기화 (effectManager로 위임)
     effectManager.reset();
@@ -493,7 +464,7 @@ function startGame() {
 
     // 게임 상태 초기화
     gameState.reset();
-    updateDisplay();
+    uiManager.updateDisplay(gameState.score, gameState.lives);
 
     // 난이도에 따라 초기화
     brickManager.init(gameState.difficulty);
@@ -541,7 +512,7 @@ function restartGame() {
 
     // 게임 상태 초기화
     gameState.reset();
-    updateDisplay();
+    uiManager.updateDisplay(gameState.score, gameState.lives);
 
     // 게임 요소 리셋
     resetBall();
@@ -597,7 +568,7 @@ function gameWin() {
         gameState.stop();
 
         // UI 표시
-        UI.winFinalScore.textContent = gameState.score;
+        uiManager.updateWinScore(gameState.score);
         UI.winScreen.classList.remove('hidden');
         animationManager.startUIPopupAnimation(UI.winScreen);
     });
@@ -608,7 +579,7 @@ function gameWin() {
         score: gameState.score,
         bricksDestroyed: 0
     });
-    updateStatsDisplay();
+    uiManager.updateStats(getStats());
 
     console.log('게임 승리! 최종 점수:', gameState.score);
 }
@@ -671,8 +642,8 @@ function onPaddleHit(){
 
 function onLifeLost(){
     gameState.lives--;
-    updateDisplay();
-    animationManager.startLifeAnimation(false, UI.lives);  // 생명 소실 애니메이션
+    uiManager.updateDisplay(gameState.score, gameState.lives);
+    animationManager.startLifeAnimation(false, uiManager.getLivesElement());  // 생명 소실 애니메이션
 
     if (gameState.lives <= 0) {
         // 게임 일시정지 (running은 유지하여 애니메이션 계속 실행)
@@ -690,8 +661,7 @@ function onLifeLost(){
             gameState.stop();
 
             // UI 표시
-            UI.finalScore.textContent = gameState.score;
-            UI.highScore.textContent = getStats().bestScore;
+            uiManager.updateGameOverScore(gameState.score, getStats().bestScore);
             UI.gameOverScreen.classList.remove('hidden');
             animationManager.startUIPopupAnimation(UI.gameOverScreen);
         });
@@ -702,7 +672,7 @@ function onLifeLost(){
             score: gameState.score,
             bricksDestroyed: 0
         });
-        updateStatsDisplay();
+        uiManager.updateStats(getStats());
 
         console.log('게임 오버! 최종 점수:', gameState.score, '총 게임 수:', getStats().totalGames);
     } else {
@@ -739,7 +709,7 @@ function onBrickHit(brick) {
 
     // 점수 증가
     gameState.score += 10;
-    updateDisplay();
+    uiManager.updateDisplay(gameState.score, gameState.lives);
 
     // 점수 팝업 생성
     createScorePopup(brickCenterX, brickCenterY, 10);
@@ -750,7 +720,7 @@ function onBrickHit(brick) {
         score: 0,
         bricksDestroyed: 1
     });
-    updateStatsDisplay();
+    uiManager.updateStats(getStats());
 
     console.log('벽돌 파괴:', brick.col, brick.row, '점수:', gameState.score);
 
@@ -767,19 +737,6 @@ function onBrickHit(brick) {
 
 // checkAllBricksCleared (bricks.js에서 import)
 
-
-// 화면 표시 업데이트
-function updateDisplay() {
-    // 점수 표시
-    UI.score.textContent = gameState.score;
-
-    // 생명 표시 (하트 이모지)
-    let livesText = '';
-    for (let i = 0; i < gameState.lives; i++) {
-        livesText += '❤️';
-    }
-    UI.lives.textContent = livesText;
-}
 
 // 게임 업데이트 함수
 function update() {

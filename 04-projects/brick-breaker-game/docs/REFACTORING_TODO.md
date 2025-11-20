@@ -96,43 +96,40 @@
   - **효과**: 각 이벤트 핸들러의 책임 명확, 코드 가독성 향상, 불필요한 추상화 제거
 
 ## 7. UI 관리 시스템 (OOP + 성능 최적화)
-- [ ] **UIManager 클래스 생성**
-  - 현재: UI 관련 함수들이 game.js에 산재
+- [x] **UIManager 클래스 생성** ✅ (Stage 22 완료)
+  - 기존: UI 관련 함수들이 game.js에 산재
     - `updateDisplay()` - 점수/생명 표시 업데이트
     - `updateStatsDisplay()` - 통계 표시 업데이트
     - `updateVolumeUI()` - 볼륨 UI 업데이트
     - `updateMuteButton()` - 음소거 버튼 업데이트
-  - 개선: UIManager 클래스로 통합
+  - 개선: UIManager 클래스로 통합 (175 lines)
     ```javascript
     class UIManager {
       constructor() {
-        this.elements = {};
-        this.cachedLives = -1;  // 캐싱
+        // DOM 요소 캐싱 (표시 관련만)
+        this.score = document.querySelector('#score');
+        this.lives = document.querySelector('#lives');
+        this.stats = { ... };
+        this.volume = { ... };
       }
       updateScore(score) { ... }
-      updateLives(lives) { ... }  // 변경 시에만 업데이트
+      updateLives(lives) { ... }
+      updateDisplay(score, lives) { ... }
       updateStats(stats) { ... }
+      updateVolume(volume) { ... }
+      updateMuteButton(muted, text) { ... }
     }
     ```
+  - **설계 결정**:
+    - UIManager는 표시 업데이트만 담당 (단일 책임)
+    - 화면 전환, 이벤트 핸들러는 game.js에 유지
+    - 파라미터 설계: 개별 값 전달 (객체 전달 X)
+  - **효과**: game.js 43줄 감소, 관심사 분리, 테스트 용이성
 
-- [ ] **updateDisplay() 성능 최적화**
-  - 현재 문제: 매 프레임 불필요한 문자열 생성
-    ```javascript
-    // ❌ BAD: 생명이 안 변해도 매번 재생성
-    let livesText = '';
-    for (let i = 0; i < gameState.lives; i++) {
-      livesText += '❤️';
-    }
-    ```
-  - 개선: 변경 감지 + 캐싱
-    ```javascript
-    // ✅ GOOD: 생명 변경 시에만 업데이트
-    if (gameState.lives !== this.cachedLives) {
-      UI.lives.textContent = '❤️'.repeat(gameState.lives);
-      this.cachedLives = gameState.lives;
-    }
-    ```
-  - **효과**: 불필요한 DOM 조작 제거
+- [ ] **updateDisplay() 성능 최적화** (선택 사항)
+  - 현재: 매 프레임 문자열 생성 (성능 영향 미미)
+  - 개선 가능: 변경 시에만 업데이트 (캐싱)
+  - **판단**: 현재 성능 문제 없음, YAGNI 원칙으로 보류
 
 ## 8. 불필요한 래퍼 함수 제거 (코드 간결화)
 - [ ] **간접 호출 제거**

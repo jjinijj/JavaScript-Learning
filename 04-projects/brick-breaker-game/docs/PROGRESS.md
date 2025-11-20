@@ -855,6 +855,66 @@ let paddleHitWaves = [];
 
 ---
 
+### ✅ Stage 22 완료 (2025-11-20): UI 관리 시스템 리팩토링
+
+**목표**: UI 표시 업데이트 로직을 UIManager 클래스로 분리하여 관심사 분리
+
+**결과**:
+- uiManager.js: 175 lines (신규 생성)
+- game.js: 906 → 863 lines (43줄 감소, 4.7%)
+
+**설계 결정**:
+- **Option 1 (폐기)**: 모든 UI 로직 통합 (God Object)
+  - DOM 캐싱 + 표시 업데이트 + 화면 전환 + 이벤트 핸들러
+  - 문제: 300-400줄의 거대한 클래스, 단일 책임 원칙 위배
+
+- **Option 2 (채택)**: 책임별 분리
+  - UIManager: 표시 업데이트만 담당
+  - 화면 전환, 이벤트 핸들러는 game.js에 유지
+  - 각 클래스가 작고 명확한 책임
+
+**UIManager 책임 범위**:
+```javascript
+class UIManager {
+    updateScore(score)                      // 점수 표시
+    updateLives(lives)                      // 생명 표시
+    updateDisplay(score, lives)             // 통합 업데이트
+    updateStats(stats)                      // 통계 표시
+    updateVolume(volume)                    // 볼륨 슬라이더
+    updateMuteButton(muted, text)           // 음소거 버튼
+    updateGameOverScore(score, bestScore)   // 게임 오버 점수
+    updateWinScore(score)                   // 승리 점수
+    resetLifeAnimation()                    // 생명 애니메이션 CSS
+    getLivesElement()                       // Lives 요소 반환
+}
+```
+
+**제거된 함수**:
+- `updateDisplay()` → `uiManager.updateDisplay()`
+- `updateStatsDisplay()` → `uiManager.updateStats()`
+- `updateVolumeUI()` → `uiManager.updateVolume()`
+- `updateMuteButton()` → `uiManager.updateMuteButton()`
+
+**UIManager가 하지 않는 것** (game.js에 유지):
+- ❌ 화면 전환 (startScreen, pauseScreen 등)
+- ❌ 이벤트 핸들러 등록
+- ❌ 애니메이션 (AnimationManager가 담당)
+
+**설계 원칙**:
+1. **단일 책임**: UIManager는 표시만, 로직은 game.js
+2. **낮은 결합도**: gameState 구조에 의존하지 않음
+3. **파라미터 설계**: 개별 값 전달 (객체 전달 X)
+   - `updateDisplay(score, lives)` ✅
+   - `updateDisplay(gameState)` ❌
+
+**개선 효과**:
+- ✅ 관심사 분리 (UI 표시 로직 독립)
+- ✅ 테스트 용이성 (Mock 객체 불필요)
+- ✅ 재사용성 (어디서든 사용 가능)
+- ✅ game.js 복잡도 감소
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
@@ -863,7 +923,7 @@ let paddleHitWaves = [];
 - [x] Stage 20: 애니메이션 시스템 통합 완료 (AnimationManager)
 - [x] Stage 21: 충돌 감지 시스템 리팩토링 완료 (이벤트 핸들러 방식)
 - [x] Stage 21.5: Ball.update() 메서드 분리 완료 (위치 업데이트 vs 충돌 감지)
-- [ ] Stage 22: UI 관리 시스템 + 성능 최적화 (UIManager)
+- [x] Stage 22: UI 관리 시스템 리팩토링 완료 (UIManager)
 - [ ] Stage 23: 불필요한 래퍼 함수 제거
 - [ ] Stage 24: Update 함수 분리
 - [ ] Stage 25: 디자인 패턴 적용 (공 상태 패턴)
