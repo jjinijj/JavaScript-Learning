@@ -697,6 +697,101 @@ function checkCollisions(wallCollision) {
 
 ---
 
+## Stage 22: UI 관리 시스템 리팩토링
+
+### 1. UIManager 클래스 범위 - God Object vs 단일 책임
+
+#### 질문
+> UIManager를 어떻게 설계해야 하는가? 모든 UI 로직을 통합할까, 책임별로 분리할까?
+
+#### 결정: 단일 책임 원칙 (표시 업데이트만)
+
+**Option 1: God Object (폐기)**
+- 모든 UI 로직 통합: DOM 캐싱 + 표시 업데이트 + 화면 전환 + 이벤트 핸들러
+- 문제: 300-400줄 거대 클래스, 단일 책임 원칙 위배
+
+**Option 2: 단일 책임 (채택)** ✅
+- UIManager: 표시 업데이트만
+- 화면 전환: game.js 함수로 유지
+- 이벤트 핸들러: game.js에 유지
+
+**결론**: 작고 명확한 책임 = 유지보수 용이 ✅
+
+---
+
+### 2. querySelector vs getElementById
+
+#### 질문
+> DOM 요소 선택 시 `querySelector('#id')`와 `getElementById('id')` 중 무엇을 사용할까?
+
+#### 결정: querySelector 사용
+
+**성능 비교**:
+- `getElementById('score')`: 직접 ID 검색 (O(1))
+- `querySelector('#score')`: CSS 선택자 파싱 (약간 느림)
+
+**querySelector를 선택한 이유**:
+1. ✅ **일관성**: 모든 선택자를 같은 API로
+2. ✅ **가독성**: CSS와 동일한 문법
+3. ✅ **유연성**: 복합 선택자 사용 가능
+4. ✅ **성능 차이 미미**: 현대 브라우저에서 거의 차이 없음
+
+```javascript
+// 일관된 방식
+querySelector('#score')        // ID
+querySelector('.button')       // 클래스
+querySelector('div.active')    // 복합 선택자
+```
+
+**결론**: 일관성과 가독성 > 미미한 성능 차이 ✅
+
+---
+
+### 3. 파라미터 설계 - 개별 값 vs 객체 전달
+
+#### 질문
+> UIManager 메서드에 개별 값을 전달할까, gameState 객체를 전달할까?
+
+#### 결정: 개별 값 전달
+
+**Option 1: 개별 값 전달 (채택)** ✅
+```javascript
+// 호출
+uiManager.updateDisplay(gameState.score, gameState.lives);
+
+// UIManager
+updateDisplay(score, lives) {
+    this.updateScore(score);
+    this.updateLives(lives);
+}
+```
+
+**Option 2: 객체 전달 (폐기)**
+```javascript
+// 호출
+uiManager.updateDisplay(gameState);
+
+// UIManager
+updateDisplay(gameState) {
+    this.updateScore(gameState.score);
+    this.updateLives(gameState.lives);
+}
+```
+
+**개별 값 전달의 장점**:
+1. ✅ **의존성 분리**: UIManager는 gameState 구조를 모름
+2. ✅ **재사용성**: 어디서든 `updateScore(100)` 호출 가능
+3. ✅ **테스트 용이**: Mock 객체 불필요
+4. ✅ **명확한 인터페이스**: 시그니처만 봐도 필요한 값 명확
+
+**객체 전달의 장점**:
+- 호출 코드 간결
+- 파라미터 추가 시 변경 적음
+
+**결론**: 낮은 결합도와 재사용성 > 호출 간결성 ✅
+
+---
+
 ## 설계 원칙 요약
 
 ### 1. 단순함 우선 (KISS - Keep It Simple, Stupid)
@@ -735,6 +830,6 @@ function checkCollisions(wallCollision) {
 ## 참고
 
 - **최초 작성일**: 2025-11-13
-- **최종 업데이트**: 2025-11-14 (Stage 21, 21.5 추가)
+- **최종 업데이트**: 2025-11-20 (Stage 22 추가)
 - **프로젝트**: 벽돌깨기 게임
 - **관련 문서**: PROGRESS.md, REFACTORING_TODO.md
