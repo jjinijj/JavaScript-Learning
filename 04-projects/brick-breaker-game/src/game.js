@@ -94,6 +94,7 @@ import { gameState } from './gameState.js';
 import { EffectManager } from './effectManager.js';
 import { AnimationManager } from './animationManager.js';
 import { UIManager } from './uiManager.js';
+import { SceneManager } from './sceneManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
@@ -110,6 +111,7 @@ let brickManager;
 let effectManager;
 let animationManager;
 let uiManager;
+let sceneManager;
 
 // ========================================
 // 6단계: 게임 상태 (gameState.js에서 import)
@@ -256,12 +258,8 @@ async function init() {
 
     // DOM 요소 캐싱 (에러 체크 포함)
     const uiElements = [
-        'score', 'lives',
-        'finalScore', 'highScore', 'winFinalScore',
-        'totalGames', 'bestScore', 'totalBricks',
-        'startScreen', 'pauseScreen', 'gameOverScreen', 'winScreen',
         'difficultySelect', 'languageSelect', 'themeSelect', 'muteBtn', 'fullscreenBtn',
-        'bgmVolume', 'bgmVolumeValue', 'sfxVolume', 'sfxVolumeValue'
+        'bgmVolume', 'sfxVolume'
     ];
 
     uiElements.forEach(id => {
@@ -300,6 +298,9 @@ async function init() {
 
     // UI 매니저 초기화
     uiManager = new UIManager();
+
+    // 씬 매니저 초기화
+    sceneManager = new SceneManager(animationManager);
 
     // 게임 상태 초기화
     gameState.reset();
@@ -475,7 +476,7 @@ function startGame() {
     gameState.start();
 
     // 시작 화면 페이드 아웃
-    animationManager.hideUIPopupAnimation(UI.startScreen);
+    sceneManager.hideScreen('start', true);
 
     // 게임 BGM 재생
     playGameBGM();
@@ -490,11 +491,10 @@ function togglePause() {
     gameState.togglePause();
 
     if (gameState.paused) {
-        UI.pauseScreen.classList.remove('hidden');
-        animationManager.startUIPopupAnimation(UI.pauseScreen);
+        sceneManager.showScreen('pause');
         console.log('일시정지');
     } else {
-        animationManager.hideUIPopupAnimation(UI.pauseScreen);
+        sceneManager.hideScreen('pause', true);
         console.log('재개');
     }
 }
@@ -504,8 +504,7 @@ function restartGame() {
     // UI 클릭 사운드
     playClickSound();
 
-    UI.gameOverScreen.classList.add('hidden');
-    UI.winScreen.classList.add('hidden');
+    sceneManager.hideScreens(['gameOver', 'win']);
 
     // 게임 요소 먼저 리셋 (애니메이션 클래스 제거 포함)
     resetItems();
@@ -536,13 +535,10 @@ function showMenu() {
     gameState.stop();
 
     // 다른 화면들 즉시 숨김
-    UI.pauseScreen.classList.add('hidden');
-    UI.gameOverScreen.classList.add('hidden');
-    UI.winScreen.classList.add('hidden');
+    sceneManager.hideScreens(['pause', 'gameOver', 'win']);
 
     // 시작 화면 애니메이션과 함께 표시
-    UI.startScreen.classList.remove('hidden');
-    animationManager.startUIPopupAnimation(UI.startScreen);
+    sceneManager.showScreen('start');
 
     // 기존 BGM 정지 후 메뉴 BGM 재생
     stopBGM();
@@ -569,8 +565,7 @@ function gameWin() {
 
         // UI 표시
         uiManager.updateWinScore(gameState.score);
-        UI.winScreen.classList.remove('hidden');
-        animationManager.startUIPopupAnimation(UI.winScreen);
+        sceneManager.showScreen('win');
     });
 
     // 통계 업데이트
@@ -662,8 +657,7 @@ function onLifeLost(){
 
             // UI 표시
             uiManager.updateGameOverScore(gameState.score, getStats().bestScore);
-            UI.gameOverScreen.classList.remove('hidden');
-            animationManager.startUIPopupAnimation(UI.gameOverScreen);
+            sceneManager.showScreen('gameOver');
         });
 
         // 통계 업데이트
