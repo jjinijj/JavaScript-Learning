@@ -119,8 +119,6 @@ let sceneManager;
 // gameState는 별도 파일에서 관리
 // effectManager는 EffectManager 인스턴스로 관리
 
-// DOM 요소 캐싱
-const UI = {};
 
 // ========================================
 // 사운드 시스템 함수
@@ -256,22 +254,6 @@ async function init() {
 
     console.log('캔버스 설정 완료:', CANVAS.WIDTH, 'x', CANVAS.HEIGHT);
 
-    // DOM 요소 캐싱 (에러 체크 포함)
-    const uiElements = [
-        'difficultySelect', 'languageSelect', 'themeSelect', 'muteBtn', 'fullscreenBtn',
-        'bgmVolume', 'sfxVolume'
-    ];
-
-    uiElements.forEach(id => {
-        const element = document.getElementById(id);
-        if (!element) {
-            console.error(`❌ UI 요소를 찾을 수 없음: ${id}`);
-        } else {
-            UI[id] = element;
-        }
-    });
-
-    console.log('✅ UI 요소 캐싱 완료:', Object.keys(UI).length, '개');
 
     // 게임 객체 초기화
     ball = new Ball();
@@ -350,34 +332,36 @@ async function init() {
     document.getElementById('quitBtn').addEventListener('click', showMenu);
     document.getElementById('playAgainBtn').addEventListener('click', restartGame);
     document.getElementById('winMenuBtn').addEventListener('click', showMenu);
-    UI.muteBtn.addEventListener('click', handleMuteToggle);
-    UI.fullscreenBtn.addEventListener('click', toggleFullscreen);
+    document.querySelector('#muteBtn').addEventListener('click', handleMuteToggle);
+    document.querySelector('#fullscreenBtn').addEventListener('click', toggleFullscreen);
 
     // 언어 선택 이벤트 등록
-    UI.languageSelect.value = getCurrentLanguage(); // 현재 언어로 설정
-    UI.languageSelect.addEventListener('change', (e) => {
+    const languageSelect = document.querySelector('#languageSelect');
+    languageSelect.value = getCurrentLanguage(); // 현재 언어로 설정
+    languageSelect.addEventListener('change', (e) => {
         playClickSound();
         setLanguage(e.target.value, () => uiManager.updateMuteButton(getMuted(), t('muteBtn')));
     });
 
     // 테마 선택 이벤트 등록
-    UI.themeSelect.value = getCurrentTheme(); // 현재 테마로 설정
-    UI.themeSelect.addEventListener('change', (e) => {
+    const themeSelect = document.querySelector('#themeSelect');
+    themeSelect.value = getCurrentTheme(); // 현재 테마로 설정
+    themeSelect.addEventListener('change', (e) => {
         playClickSound();
         setTheme(e.target.value);
     });
 
     // 난이도 선택 이벤트 등록
-    UI.difficultySelect.addEventListener('change', () => {
+    document.querySelector('#difficultySelect').addEventListener('change', () => {
         playClickSound();
     });
 
     // 볼륨 슬라이더 이벤트 등록
-    UI.bgmVolume.addEventListener('input', (e) => {
+    document.querySelector('#bgmVolume').addEventListener('input', (e) => {
         handleBGMVolumeChange(e.target.value);
     });
 
-    UI.sfxVolume.addEventListener('input', (e) => {
+    document.querySelector('#sfxVolume').addEventListener('input', (e) => {
         handleSFXVolumeChange(e.target.value);
     });
 
@@ -461,7 +445,7 @@ function startGame() {
     playClickSound();
 
     // 난이도 가져오기
-    gameState.difficulty = UI.difficultySelect.value;
+    gameState.difficulty = document.querySelector('#difficultySelect').value;
 
     // 게임 상태 초기화
     gameState.reset();
