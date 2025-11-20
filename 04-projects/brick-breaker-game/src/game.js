@@ -245,7 +245,7 @@ async function init() {
     setTheme(savedTheme);
 
     // 캔버스 요소 가져오기
-    canvas = document.getElementById('gameCanvas');
+    canvas = document.querySelector('#gameCanvas');
     ctx = canvas.getContext('2d');
 
     // 캔버스 크기 설정
@@ -324,14 +324,14 @@ async function init() {
     }
 
     // UI 버튼 이벤트 등록
-    document.getElementById('startBtn').addEventListener('click', startGame);
-    document.getElementById('pauseBtn').addEventListener('click', togglePause);
-    document.getElementById('resumeBtn').addEventListener('click', togglePause);
-    document.getElementById('restartBtn').addEventListener('click', restartGame);
-    document.getElementById('menuBtn').addEventListener('click', showMenu);
-    document.getElementById('quitBtn').addEventListener('click', showMenu);
-    document.getElementById('playAgainBtn').addEventListener('click', restartGame);
-    document.getElementById('winMenuBtn').addEventListener('click', showMenu);
+    document.querySelector('#startBtn').addEventListener('click', startGame);
+    document.querySelector('#pauseBtn').addEventListener('click', togglePause);
+    document.querySelector('#resumeBtn').addEventListener('click', togglePause);
+    document.querySelector('#restartBtn').addEventListener('click', restartGame);
+    document.querySelector('#menuBtn').addEventListener('click', showMenu);
+    document.querySelector('#quitBtn').addEventListener('click', showMenu);
+    document.querySelector('#playAgainBtn').addEventListener('click', restartGame);
+    document.querySelector('#winMenuBtn').addEventListener('click', showMenu);
     document.querySelector('#muteBtn').addEventListener('click', handleMuteToggle);
     document.querySelector('#fullscreenBtn').addEventListener('click', toggleFullscreen);
 
