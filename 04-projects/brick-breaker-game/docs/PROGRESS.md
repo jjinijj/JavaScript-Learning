@@ -915,6 +915,80 @@ class UIManager {
 
 ---
 
+### ✅ Stage 22.5 완료 (2025-11-20): 화면 전환 시스템 리팩토링 + UI 객체 제거
+
+**목표**: 화면 전환 로직을 SceneManager로 중앙화하고 불필요한 UI 캐싱 제거
+
+**결과**:
+- sceneManager.js: 133 lines (신규 생성)
+- game.js: 863 → 841 lines (22줄 감소, 2.5%)
+
+**3단계 작업**:
+
+**1. SceneManager 생성**
+- 화면(Scene) DOM 요소 캐싱 및 관리
+- showScreen, hideScreen, hideScreens, hideAllScreens 메서드 제공
+- AnimationManager와 연동하여 화면 애니메이션 처리
+
+**SceneManager 책임 범위**:
+```javascript
+class SceneManager {
+    showScreen(screenName, withAnimation=true)   // 화면 표시
+    hideScreen(screenName, withAnimation=false)  // 화면 숨김
+    hideScreens(screenNames)                     // 여러 화면 숨김
+    hideAllScreens()                             // 모든 화면 숨김
+    getCurrentScreen()                           // 현재 화면 반환
+    getScreen(screenName)                        // 화면 요소 반환
+}
+```
+
+**2. game.js 화면 전환 코드 교체**:
+- `startGame()`: `animationManager.hideUIPopupAnimation(UI.startScreen)` → `sceneManager.hideScreen('start', true)`
+- `togglePause()`: 화면 표시/숨김을 sceneManager로 교체
+- `restartGame()`: `UI.gameOverScreen.classList.add('hidden')` → `sceneManager.hideScreens(['gameOver', 'win'])`
+- `showMenu()`: 여러 화면 숨김/표시 로직을 sceneManager로 통합
+- `gameWin()`: 승리 화면 표시를 sceneManager로 교체
+- `gameOver()`: 게임 오버 화면 표시를 sceneManager로 교체
+
+**3. UI 객체 완전 제거**:
+- UI 객체 선언 및 DOM 캐싱 로직 제거
+- 이유: 이벤트 등록 시 1회만 사용되는 요소들로 캐싱 불필요
+- 모든 UI 요소 참조를 직접 `document.querySelector()` 호출로 변경
+
+**4. querySelector 통일**:
+- 모든 `getElementById` → `querySelector`로 변경
+- Stage 22 디자인 결정(querySelector 사용)과 일치
+- 일관성 및 확장성 향상
+
+**제거된 패턴**:
+```javascript
+// Before (중복 패턴)
+UI.gameOverScreen.classList.add('hidden');
+UI.winScreen.classList.add('hidden');
+
+UI.winScreen.classList.remove('hidden');
+animationManager.startUIPopupAnimation(UI.winScreen);
+
+// After (중앙화)
+sceneManager.hideScreens(['gameOver', 'win']);
+sceneManager.showScreen('win');
+```
+
+**설계 결정**:
+- **SceneManager 필요성**: 화면 전환 로직이 game.js 곳곳에 분산됨
+- **단일 책임 원칙**: 화면 전환은 SceneManager, UI 표시는 UIManager
+- **UI 캐싱 제거**: 성능 이점 없고 메모리만 차지하는 캐싱 제거
+- **querySelector 통일**: 일관성 > 미세한 성능 차이
+
+**개선 효과**:
+- ✅ 화면 전환 로직 중앙화 (코드 중복 제거)
+- ✅ game.js 복잡도 감소 (22줄 감소)
+- ✅ 불필요한 캐싱 제거 (메모리 최적화)
+- ✅ 코드 일관성 향상 (querySelector 통일)
+- ✅ 유지보수성 향상 (화면 전환 한 곳에서 관리)
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
@@ -924,6 +998,7 @@ class UIManager {
 - [x] Stage 21: 충돌 감지 시스템 리팩토링 완료 (이벤트 핸들러 방식)
 - [x] Stage 21.5: Ball.update() 메서드 분리 완료 (위치 업데이트 vs 충돌 감지)
 - [x] Stage 22: UI 관리 시스템 리팩토링 완료 (UIManager)
+- [x] Stage 22.5: 화면 전환 시스템 리팩토링 완료 (SceneManager + UI 객체 제거)
 - [ ] Stage 23: 불필요한 래퍼 함수 제거
 - [ ] Stage 24: Update 함수 분리
 - [ ] Stage 25: 디자인 패턴 적용 (공 상태 패턴)

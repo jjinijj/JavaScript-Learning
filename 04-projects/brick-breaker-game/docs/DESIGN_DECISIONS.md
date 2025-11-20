@@ -827,9 +827,140 @@ updateDisplay(gameState) {
 
 ---
 
+## Stage 22.5: 화면 전환 시스템 리팩토링
+
+### 1. SceneManager 필요성
+
+#### 질문
+> UIManager를 만들 때 화면 전환 로직도 포함시켜야 할까?
+> 아니면 별도의 SceneManager를 만들어야 할까?
+
+#### 결정: SceneManager 별도 생성 ✅
+
+**Option 1: God Object (폐기)** ❌
+```javascript
+class UIManager {
+    // 1. DOM 캐싱
+    // 2. 표시 업데이트
+    // 3. 화면 전환
+    // 4. 이벤트 핸들러
+}
+// 문제: 300-400줄의 거대한 클래스, 단일 책임 원칙 위배
+```
+
+**Option 2: 책임 분리 (채택)** ✅
+```javascript
+class UIManager {
+    // 표시 업데이트만
+    updateScore(score) { ... }
+    updateLives(lives) { ... }
+}
+
+class SceneManager {
+    // 화면 전환만
+    showScreen(screenName) { ... }
+    hideScreen(screenName) { ... }
+}
+```
+
+**현재 문제**:
+- 화면 전환 코드가 game.js 곳곳에 분산
+- 같은 패턴이 6개 함수에서 반복
+```javascript
+// 반복 패턴
+UI.winScreen.classList.remove('hidden');
+animationManager.startUIPopupAnimation(UI.winScreen);
+```
+
+**SceneManager 생성 이유**:
+1. ✅ **코드 중복 제거**: 화면 전환 패턴 중앙화
+2. ✅ **단일 책임**: 각 매니저가 하나의 역할만
+3. ✅ **유지보수성**: 화면 전환 로직 한 곳에서 관리
+4. ✅ **일관성**: 모든 화면 전환이 동일한 방식
+
+**결론**: 작고 명확한 클래스 > 거대한 God Object ✅
+
+---
+
+### 2. UI 객체 캐싱 필요성
+
+#### 질문
+> UI 객체에 DOM 요소를 캐싱하는 것이 의미 있을까?
+
+#### 결정: UI 객체 제거 ✅
+
+**현재 상황**:
+```javascript
+const UI = {};
+const uiElements = ['muteBtn', 'fullscreenBtn', 'bgmVolume', 'sfxVolume', ...];
+uiElements.forEach(id => {
+    UI[id] = document.getElementById(id);
+});
+
+// 사용
+UI.muteBtn.addEventListener('click', handleMuteToggle);
+UI.bgmVolume.addEventListener('input', (e) => { ... });
+```
+
+**문제점**:
+1. ❌ **캐싱 이점 없음**: 초기화 시 1회만 사용
+2. ❌ **메모리 낭비**: 불필요한 객체 유지
+3. ❌ **간접 참조**: `UI.muteBtn` vs `document.querySelector('#muteBtn')`
+4. ❌ **추가 유지보수**: UI 객체 관리 필요
+
+**개선 후**:
+```javascript
+// 직접 쿼리
+document.querySelector('#muteBtn').addEventListener('click', handleMuteToggle);
+document.querySelector('#bgmVolume').addEventListener('input', (e) => { ... });
+```
+
+**캐싱이 유용한 경우**:
+- ✅ 게임 루프에서 매 프레임 접근 (UIManager의 score, lives)
+- ❌ 초기화 시 1회만 사용 (버튼 이벤트 등록)
+
+**결론**: 불필요한 캐싱 제거, 메모리 최적화 ✅
+
+---
+
+### 3. querySelector vs getElementById 통일
+
+#### 질문
+> querySelector와 getElementById를 혼용하고 있는데 통일해야 할까?
+
+#### 결정: querySelector로 통일 ✅
+
+**현재 상황**:
+```javascript
+// 혼용
+canvas = document.getElementById('gameCanvas');
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.querySelector('#muteBtn').addEventListener('click', handleMuteToggle);
+```
+
+**getElementById의 장점**:
+- 미세하게 빠름 (직접 ID 해시 테이블 조회)
+
+**querySelector의 장점**:
+1. ✅ **일관성**: 코드 전체에서 동일한 API
+2. ✅ **확장성**: CSS 선택자로 쉽게 변경 가능
+3. ✅ **통합 API**: 모든 선택자 지원
+4. ✅ **Stage 22 결정 일치**: UIManager에서 이미 querySelector 사용
+
+**성능 비교**:
+```javascript
+// 초기화 시 1회 호출 → 성능 차이 무시 가능
+getElementById('btn');  // ~0.001ms
+querySelector('#btn');  // ~0.002ms
+```
+
+**결론**: 일관성 > 미세한 성능 차이 ✅
+
+---
+
 ## 참고
 
 - **최초 작성일**: 2025-11-13
-- **최종 업데이트**: 2025-11-20 (Stage 22 추가)
+- **최종 업데이트**: 2025-11-20 (Stage 22.5 추가)
 - **프로젝트**: 벽돌깨기 게임
 - **관련 문서**: PROGRESS.md, REFACTORING_TODO.md

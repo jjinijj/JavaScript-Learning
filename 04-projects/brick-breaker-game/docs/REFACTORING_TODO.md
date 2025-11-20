@@ -126,6 +126,49 @@
     - 파라미터 설계: 개별 값 전달 (객체 전달 X)
   - **효과**: game.js 43줄 감소, 관심사 분리, 테스트 용이성
 
+- [x] **SceneManager 클래스 생성** ✅ (Stage 22.5 완료)
+  - 기존: 화면 전환 로직이 game.js 곳곳에 분산
+    - 패턴 중복: `UI.winScreen.classList.remove('hidden')` + `animationManager.startUIPopupAnimation()`
+    - 6개 함수에서 화면 전환 코드 반복
+  - 개선: SceneManager 클래스로 중앙화 (133 lines)
+    ```javascript
+    class SceneManager {
+      constructor(animationManager) {
+        this.screens = {
+          start: document.querySelector('#startScreen'),
+          pause: document.querySelector('#pauseScreen'),
+          gameOver: document.querySelector('#gameOverScreen'),
+          win: document.querySelector('#winScreen'),
+          settings: document.querySelector('#settingsScreen'),
+          stats: document.querySelector('#statsScreen')
+        };
+      }
+      showScreen(screenName, withAnimation=true) { ... }
+      hideScreen(screenName, withAnimation=false) { ... }
+      hideScreens(screenNames) { ... }
+      hideAllScreens() { ... }
+    }
+    ```
+  - **설계 결정**:
+    - SceneManager는 화면 전환만 담당 (단일 책임)
+    - AnimationManager와 연동하여 애니메이션 처리
+    - UI 표시는 UIManager, 화면 전환은 SceneManager로 책임 분리
+  - **효과**: game.js 22줄 감소, 코드 중복 제거, 유지보수성 향상
+
+- [x] **UI 객체 제거 및 querySelector 통일** ✅ (Stage 22.5 완료)
+  - 기존: UI 객체에 DOM 요소 캐싱
+    - 문제: 이벤트 등록 시 1회만 사용, 불필요한 메모리 점유
+    - getElementById와 querySelector 혼용
+  - 개선:
+    - UI 객체 완전 제거 (선언 및 캐싱 로직 삭제)
+    - 모든 getElementById → querySelector로 통일
+    - 직접 `document.querySelector('#id')` 호출
+  - **설계 결정**:
+    - 캐싱 이점 없음: 초기화 시 1회만 사용
+    - querySelector 통일: 일관성 > 미세한 성능 차이
+    - Stage 22 디자인 결정과 일치
+  - **효과**: 코드 간소화, 메모리 최적화, 일관성 향상
+
 - [ ] **updateDisplay() 성능 최적화** (선택 사항)
   - 현재: 매 프레임 문자열 생성 (성능 영향 미미)
   - 개선 가능: 변경 시에만 업데이트 (캐싱)
