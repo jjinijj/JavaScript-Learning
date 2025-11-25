@@ -1055,6 +1055,80 @@ paddle.update();
 
 ---
 
+### ✅ Stage 24 완료 (2025-11-25): update() 함수 분리
+
+**목표**: 게임 업데이트 로직을 책임별로 분리하여 관심사 분리
+
+**결과**:
+- game.js: 829 → 849줄 (+20줄)
+
+**변경 사항: update() 함수를 3개로 분리**
+
+**1. updateInput() - 입력 처리 (8줄)**
+```javascript
+function updateInput() {
+    const paddleWidth = getAnimatedPaddleWidth();
+    // 패들 이동 (키보드)
+    if (isRightPressed()) {
+        paddle.move('right', paddleWidth);
+    } else if (isLeftPressed()) {
+        paddle.move('left', paddleWidth);
+    }
+}
+```
+
+**2. updateGameplay() - 게임 로직 (14줄)**
+```javascript
+function updateGameplay() {
+    // 공 위치 업데이트
+    // 공-벽 충돌 감지
+    // 충돌 처리
+    // 아이템 업데이트
+}
+```
+
+**3. updateAnimations() - 애니메이션 (28줄)**
+```javascript
+function updateAnimations() {
+    // 애니메이션 매니저
+    // 아이템 애니메이션
+    // 입자, 벽돌 조각, 공 트레일
+    // 점수 팝업, 패들 히트 충격파
+    // 패들 애니메이션
+}
+```
+
+**4. update() - 메인 함수 (14줄)**
+```javascript
+function update() {
+    // 항상 애니메이션 업데이트 (일시정지 화면에서도)
+    updateAnimations();
+
+    // 게임 진행 중일 때만
+    if (!gameState.isPlaying()) return;
+
+    updateInput();      // 입력 처리
+    updateGameplay();   // 게임 로직
+}
+```
+
+**설계 결정**:
+- **관심사 분리**: 입력/로직/애니메이션을 명확히 구분
+- **실행 순서**: 애니메이션 → 입력 → 게임 로직
+- **조건부 실행**: 게임 진행 중일 때만 입력/로직 업데이트
+
+**개선 효과**:
+- ✅ 관심사 분리 (책임 명확화)
+- ✅ 가독성 향상 (각 함수가 하나의 역할만)
+- ✅ 유지보수성 향상 (수정 시 해당 함수만 찾으면 됨)
+- ✅ 테스트 용이성 (각 함수를 독립적으로 테스트 가능)
+
+**알려진 버그 (리팩토링 후 수정 예정)**:
+- ⚠️ 공 속도 느림 아이템 중첩 사용 가능
+- ⚠️ 시간 경과 후에도 원래 속도로 복구 안 됨
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
@@ -1066,7 +1140,7 @@ paddle.update();
 - [x] Stage 22: UI 관리 시스템 리팩토링 완료 (UIManager)
 - [x] Stage 22.5: 화면 전환 시스템 리팩토링 완료 (SceneManager + UI 객체 제거)
 - [x] Stage 23: 최소 래퍼 함수 제거 완료 (EffectManager 콜백 인라인화)
-- [ ] Stage 24: Update 함수 분리
+- [x] Stage 24: update() 함수 분리 완료 (입력/게임로직/애니메이션)
 - [ ] Stage 25: 디자인 패턴 적용 (공 상태 패턴)
 - [ ] Stage 26: GameController 통합 (최종)
 - [ ] 선택 사항: 모바일 터치 컨트롤
