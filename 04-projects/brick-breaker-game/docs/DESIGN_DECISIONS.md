@@ -958,9 +958,100 @@ querySelector('#btn');  // ~0.002ms
 
 ---
 
+## Stage 23: 최소 래퍼 함수 제거
+
+### 1. 래퍼 함수 제거 범위 결정
+
+#### 질문
+> 모든 래퍼 함수를 제거해야 할까, 아니면 일부만 제거해야 할까?
+
+#### 결정: 최소한만 제거 ✅
+
+**트레이드오프 분석**:
+
+**래퍼 함수 제거의 장점**:
+- ✅ 코드 간결화
+- ✅ 함수 호출 오버헤드 제거
+- ✅ 스택 트레이스 단순화
+
+**래퍼 함수 유지의 장점**:
+- ✅ 복잡한 파라미터 숨김
+- ✅ 의존성 캡슐화
+- ✅ 코드 중복 방지
+- ✅ 변경 용이성 (한 곳에서 수정)
+
+**결정 기준**:
+```javascript
+// ❌ 제거: 단순하고 1곳에서만 사용
+function updatePaddleAnimation() {
+    paddle.update();
+}
+// → paddle.update() 직접 호출
+
+// ✅ 유지: 복잡한 파라미터 + 5곳 사용
+function getAnimatedPaddleWidth() {
+    return paddle.getAnimatedWidth(effectManager.getActiveEffects());
+}
+// → 제거 시 effectManager 의존성 5곳에 노출
+```
+
+**사용 횟수 분석**:
+1. `getAnimatedPaddleWidth()` - 5곳 사용 → **유지**
+2. `updatePaddleAnimation()` - 1곳 사용 → **제거**
+3. `resetBall()` - 3곳 사용 → **유지**
+4. `resetPaddle()` - 3곳 사용 → **유지**
+5. `startPaddleResizeAnimation()` - 콜백 → **유지**
+
+**결론**: 간결성과 추상화의 균형 ✅
+
+---
+
+### 2. EffectManager 콜백 설계
+
+#### 질문
+> 콜백을 별도 함수로 정의할까, 인라인 함수로 정의할까?
+
+#### 결정: 인라인 화살표 함수 ✅
+
+**Before (별도 함수)**:
+```javascript
+function getPaddleWidth() {
+    return paddle.getWidth(effectManager.getActiveEffects());
+}
+
+effectManager.setCallbacks({
+    getPaddleWidth: getPaddleWidth
+});
+```
+
+**After (인라인 함수)**:
+```javascript
+effectManager.setCallbacks({
+    getPaddleWidth: () => paddle.getWidth(effectManager.getActiveEffects()),
+    restoreBallSpeed: () => {
+        const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+        ball.restoreSpeed(settings.ballSpeed);
+    }
+});
+```
+
+**인라인 함수의 장점**:
+1. ✅ **명확성**: 콜백 로직이 사용 지점에 있음
+2. ✅ **간결성**: 별도 함수 정의 불필요
+3. ✅ **스코프**: 클로저로 필요한 변수 자동 접근
+4. ✅ **유지보수**: 콜백만 사용되는 로직은 한 곳에 위치
+
+**별도 함수의 장점**:
+1. ✅ 재사용 가능 (하지만 현재는 콜백에서만 사용)
+2. ✅ 테스트 용이 (하지만 콜백 자체는 테스트 안 함)
+
+**결론**: 콜백 전용 로직은 인라인화 ✅
+
+---
+
 ## 참고
 
 - **최초 작성일**: 2025-11-13
-- **최종 업데이트**: 2025-11-20 (Stage 22.5 추가)
+- **최종 업데이트**: 2025-11-25 (Stage 23 추가)
 - **프로젝트**: 벽돌깨기 게임
 - **관련 문서**: PROGRESS.md, REFACTORING_TODO.md

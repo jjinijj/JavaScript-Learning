@@ -178,16 +178,6 @@ function applyItemEffect(itemType) {
     }
 }
 
-// 공 속도 복원
-function restoreBallSpeed() {
-    const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
-    ball.restoreSpeed(settings.ballSpeed);
-}
-
-// 현재 패들 너비 계산 (효과 반영) - paddle 메서드로 위임
-function getPaddleWidth() {
-    return paddle.getWidth(effectManager.getActiveEffects());
-}
 
 // ========================================
 // 입자 효과 함수
@@ -213,11 +203,6 @@ function getPaddleWidth() {
 // 패들 크기 변경 애니메이션 시작 (paddle 메서드로 위임)
 function startPaddleResizeAnimation(fromWidth, toWidth) {
     paddle.startResizeAnimation(fromWidth, toWidth);
-}
-
-// 패들 애니메이션 업데이트 (paddle 메서드로 위임)
-function updatePaddleAnimation() {
-    paddle.update();
 }
 
 // 애니메이션이 적용된 패들 너비 가져오기 (paddle 메서드로 위임)
@@ -269,10 +254,13 @@ async function init() {
     // 효과 매니저 초기화
     effectManager = new EffectManager();
     effectManager.setCallbacks({
-        getPaddleWidth: getPaddleWidth,
-        getAnimatedPaddleWidth: getAnimatedPaddleWidth,
-        startPaddleAnimation: startPaddleResizeAnimation,
-        restoreBallSpeed: restoreBallSpeed
+        getPaddleWidth: () => paddle.getWidth(effectManager.getActiveEffects()),
+        getAnimatedPaddleWidth: () => paddle.getAnimatedWidth(effectManager.getActiveEffects()),
+        startPaddleAnimation: (fromWidth, toWidth) => paddle.startResizeAnimation(fromWidth, toWidth),
+        restoreBallSpeed: () => {
+            const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+            ball.restoreSpeed(settings.ballSpeed);
+        }
     });
 
     // 애니메이션 매니저 초기화
@@ -742,7 +730,7 @@ function update() {
     checkCollisions(wallCollision);
 
     // 아이템 업데이트
-    updateItemsModule(paddle.x, getPaddleWidth, applyItemEffect);
+    updateItemsModule(paddle.x, () => paddle.getWidth(effectManager.getActiveEffects()), applyItemEffect);
 
     // 아이템 애니메이션 업데이트
     updateItemAnimations();
@@ -766,7 +754,7 @@ function update() {
     updatePaddleHitWaves();
 
     // 패들 애니메이션 업데이트
-    updatePaddleAnimation();
+    paddle.update();
 }
 
 // 게임 그리기 함수

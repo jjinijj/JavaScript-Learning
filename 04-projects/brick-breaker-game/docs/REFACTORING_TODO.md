@@ -175,25 +175,20 @@
   - **판단**: 현재 성능 문제 없음, YAGNI 원칙으로 보류
 
 ## 8. 불필요한 래퍼 함수 제거 (코드 간결화)
-- [ ] **간접 호출 제거**
-  - 현재: 단순 전달만 하는 래퍼 함수들
-    ```javascript
-    // ❌ 불필요한 래퍼
-    function startPaddleResizeAnimation(fromWidth, toWidth) {
-      paddle.startResizeAnimation(fromWidth, toWidth);
-    }
-
-    function updatePaddleAnimation() {
-      paddle.update();
-    }
-    ```
-  - 개선: 직접 호출
-    ```javascript
-    // ✅ 직접 호출
-    paddle.startResizeAnimation(fromWidth, toWidth);
-    paddle.update();
-    ```
-  - **효과**: 함수 호출 오버헤드 제거, 코드 간결화
+- [x] **최소 래퍼 함수 제거** ✅ (Stage 23 완료)
+  - 기존: 단순 전달만 하는 래퍼 함수들
+  - 개선:
+    - EffectManager 콜백을 인라인 화살표 함수로 변경
+    - `updatePaddleAnimation()` 제거 → `paddle.update()` 직접 호출
+  - **설계 결정: 최소 변경**
+    - ❌ 제거: 1곳에서만 사용되는 단순 래퍼
+    - ✅ 유지: 중복이 많거나 복잡한 파라미터를 숨기는 래퍼
+  - **유지된 래퍼 함수들**:
+    - `getAnimatedPaddleWidth()` - 5곳 사용, 복잡한 파라미터
+    - `startPaddleResizeAnimation()` - 콜백 사용
+    - `resetBall()` - 3곳 사용
+    - `resetPaddle()` - 3곳 사용
+  - **효과**: game.js 12줄 감소, 유용한 추상화 유지
 
 ## 9. GameController 클래스 생성 (최종 통합)
 - [ ] **전체 게임 흐름을 하나의 컨트롤러로 통합**
