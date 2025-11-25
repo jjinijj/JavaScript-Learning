@@ -704,20 +704,9 @@ function onBrickHit(brick) {
 // checkAllBricksCleared (bricks.js에서 import)
 
 
-// 게임 업데이트 함수
-function update() {
-    // 애니메이션 매니저 업데이트 (활성화된 애니메이션만 업데이트)
-    animationManager.update();
-
-    // 게임이 진행 중이 아니면 업데이트 안 함
-    if (!gameState.isPlaying()) return;
-
-    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동)
+// 입력 처리
+function updateInput() {
     const paddleWidth = getAnimatedPaddleWidth();
-    ball.update(paddle.x, paddleWidth);
-
-    // 공-벽 충돌 감지
-    const wallCollision = ball.checkWallCollision();
 
     // 패들 이동 (키보드)
     if (isRightPressed()) {
@@ -725,12 +714,28 @@ function update() {
     } else if (isLeftPressed()) {
         paddle.move('left', paddleWidth);
     }
+}
+
+// 게임 로직 업데이트
+function updateGameplay() {
+    // 공 위치 업데이트 (발사 전: 패들 위 고정, 발사 후: 이동)
+    const paddleWidth = getAnimatedPaddleWidth();
+    ball.update(paddle.x, paddleWidth);
+
+    // 공-벽 충돌 감지
+    const wallCollision = ball.checkWallCollision();
 
     // 충돌 처리
     checkCollisions(wallCollision);
 
     // 아이템 업데이트
     updateItemsModule(paddle.x, () => paddle.getWidth(effectManager.getActiveEffects()), applyItemEffect);
+}
+
+// 애니메이션 업데이트
+function updateAnimations() {
+    // 애니메이션 매니저 업데이트 (활성화된 애니메이션만 업데이트)
+    animationManager.update();
 
     // 아이템 애니메이션 업데이트
     updateItemAnimations();
@@ -755,6 +760,21 @@ function update() {
 
     // 패들 애니메이션 업데이트
     paddle.update();
+}
+
+// 게임 업데이트 함수 (메인)
+function update() {
+    // 애니메이션은 항상 업데이트 (일시정지 화면 등에서도 표시)
+    updateAnimations();
+
+    // 게임이 진행 중이 아니면 게임 로직 업데이트 안 함
+    if (!gameState.isPlaying()) return;
+
+    // 입력 처리
+    updateInput();
+
+    // 게임 로직 업데이트
+    updateGameplay();
 }
 
 // 게임 그리기 함수
