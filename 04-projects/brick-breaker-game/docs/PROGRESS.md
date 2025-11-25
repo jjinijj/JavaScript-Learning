@@ -989,6 +989,72 @@ sceneManager.showScreen('win');
 
 ---
 
+### ✅ Stage 23 완료 (2025-11-25): 최소 래퍼 함수 제거
+
+**목표**: 불필요한 간접 호출 제거하되, 유용한 추상화는 유지
+
+**결과**:
+- game.js: 841 → 829줄 (-12줄, 1.4% 감소)
+
+**설계 원칙: 최소 변경**
+- ❌ **제거**: 1곳에서만 사용되는 단순 래퍼
+- ✅ **유지**: 중복이 많거나 복잡한 파라미터를 숨기는 래퍼
+
+**변경 사항**:
+
+**1. EffectManager 콜백 인라인화**
+```javascript
+// Before
+effectManager.setCallbacks({
+    getPaddleWidth: getPaddleWidth,
+    restoreBallSpeed: restoreBallSpeed
+});
+
+// After
+effectManager.setCallbacks({
+    getPaddleWidth: () => paddle.getWidth(effectManager.getActiveEffects()),
+    restoreBallSpeed: () => {
+        const settings = DIFFICULTY_SETTINGS[gameState.difficulty];
+        ball.restoreSpeed(settings.ballSpeed);
+    }
+});
+```
+
+**2. 단순 래퍼 함수 제거 (1개)**
+```javascript
+// Before
+function updatePaddleAnimation() {
+    paddle.update();
+}
+updatePaddleAnimation();
+
+// After
+paddle.update();
+```
+
+**3. 유지된 래퍼 함수들 (4개)**
+- `getAnimatedPaddleWidth()` - 5곳 사용
+  - 복잡한 파라미터: `paddle.getAnimatedWidth(effectManager.getActiveEffects())`
+  - 제거 시 코드 중복 증가
+- `startPaddleResizeAnimation()` - 콜백 사용
+- `resetBall()` - 3곳 사용
+- `resetPaddle()` - 3곳 사용
+
+**설계 결정**:
+- **중복 vs 추상화 트레이드오프**
+  - 사용 횟수가 많고 파라미터가 복잡한 경우 → 래퍼 유지
+  - 단순하고 1곳에서만 사용 → 직접 호출
+- **캡슐화 유지**
+  - effectManager 의존성을 숨기는 함수는 유지
+  - 단순 전달만 하는 함수는 제거
+
+**개선 효과**:
+- ✅ 불필요한 간접 호출 제거 (성능 미세 개선)
+- ✅ 코드 간결화
+- ✅ 유용한 추상화는 유지 (가독성 유지)
+
+---
+
 ## 다음 할 일
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
@@ -999,7 +1065,7 @@ sceneManager.showScreen('win');
 - [x] Stage 21.5: Ball.update() 메서드 분리 완료 (위치 업데이트 vs 충돌 감지)
 - [x] Stage 22: UI 관리 시스템 리팩토링 완료 (UIManager)
 - [x] Stage 22.5: 화면 전환 시스템 리팩토링 완료 (SceneManager + UI 객체 제거)
-- [ ] Stage 23: 불필요한 래퍼 함수 제거
+- [x] Stage 23: 최소 래퍼 함수 제거 완료 (EffectManager 콜백 인라인화)
 - [ ] Stage 24: Update 함수 분리
 - [ ] Stage 25: 디자인 패턴 적용 (공 상태 패턴)
 - [ ] Stage 26: GameController 통합 (최종)
