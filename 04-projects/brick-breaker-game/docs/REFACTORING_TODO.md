@@ -52,11 +52,13 @@
   - **효과**: game.js 20줄 증가했지만 가독성/유지보수성 향상
 
 ## 4. 디자인 패턴 적용
-- [ ] **공 상태 패턴 사용**
-  - `BallNotLaunched` - 패들에 붙어있는 상태
-  - `BallMoving` - 발사되어 움직이는 상태
-  - `BallSlowed` - 슬로우 아이템 효과 상태
-  - 현재: if문으로 ballLaunched 체크
+- [x] ~~**공 상태 패턴 사용**~~ → **스킵 결정 (2025-11-26)**
+  - **스킵 이유**:
+    - `launched` 플래그 사용처가 단 3곳 (과도한 추상화)
+    - State Pattern 도입 시 복잡도 폭증 (4개 파일 + 70줄)
+    - YAGNI 원칙: 단순 조건문이 더 명확
+  - **BallManager 검토**: 공 분리 아이템 추가 시에만 필요
+  - **결론**: 현재 구조 유지, 필요 시 나중에 추가
 
 ## 5. 애니메이션 시스템 통합 (OOP + 효율성)
 - [x] **AnimationManager 클래스 생성** ✅ (Stage 20 완료)
@@ -194,7 +196,7 @@
     - `resetPaddle()` - 3곳 사용
   - **효과**: game.js 12줄 감소, 유용한 추상화 유지
 
-## 9. GameController 클래스 생성 (최종 통합)
+## 9. GameController 클래스 생성 (최종 통합) - Stage 26
 - [ ] **전체 게임 흐름을 하나의 컨트롤러로 통합**
   - 현재: game.js에 개별 함수들로 분산
     - `startGame()`, `togglePause()`, `restartGame()`, `showMenu()`, `gameWin()` 등
@@ -207,7 +209,8 @@
         this.brickManager = new BrickManager();
         this.animationManager = new AnimationManager();
         this.uiManager = new UIManager();
-        this.collisionDetector = new CollisionDetector();
+        this.sceneManager = new SceneManager();
+        this.effectManager = new EffectManager();
       }
 
       start() { ... }
@@ -217,7 +220,6 @@
       draw() { ... }
     }
     ```
-  - **State Pattern 준비**: 이후 섹션 4 (공 상태 패턴) 적용 시 자연스럽게 통합
   - **효과**: 게임 전체 흐름의 명확한 진입점, 의존성 관리 용이
 
 ---
@@ -297,23 +299,21 @@
 ---
 
 ## 참고
-- 현재 game.js 파일 크기: 885 lines (Stage 20 후)
-- **리팩토링 우선순위 (업데이트)**:
-  - **1단계**: 섹션 1, 2 완료 ✅ (모듈 분리, 클래스화)
-  - **2단계**: 섹션 5 → 8 (효율성 + OOP 개선)
-    - 5: AnimationManager 클래스 (효율성 + 통합) ✅ Stage 20 완료
-    - 6: CollisionDetector 클래스 (단일 책임)
-    - 7: UIManager 클래스 + 성능 최적화
-    - 8: 불필요한 래퍼 함수 제거 (간결화)
-  - **3단계**: 섹션 3 → Update 함수 분리 (2단계 후 자연스럽게 적용)
-  - **4단계**: 섹션 4 → State Pattern (공 상태)
-  - **5단계**: 섹션 9 → GameController 통합 (최종)
-  - **이유**: OOP + 효율성 개선을 먼저 하면, update 분리와 State Pattern이 자연스럽게 적용됨
-- Stage 16 완료 (2025-10-28): 9개 애니메이션 시스템
-- Stage 17 완료 (2025-10-28 ~ 2025-11-06): 모듈 분리
-- Stage 18 완료 (2025-11-06 ~ 2025-11-11): OOP 리팩토링
-- Stage 19 완료 (2025-11-11 ~ 2025-11-13): 게임 시스템 분리
-- Stage 20 완료 (2025-11-13): 애니메이션 시스템 통합
+- 현재 game.js 파일 크기: 849 lines (Stage 24 후)
+- **완료된 리팩토링 단계**:
+  - ✅ Stage 16: 9개 애니메이션 시스템
+  - ✅ Stage 17 (2025-10-28 ~ 2025-11-06): 모듈 분리 (2200 → 850 lines)
+  - ✅ Stage 18 (2025-11-06 ~ 2025-11-11): Ball/Paddle/Brick OOP 전환
+  - ✅ Stage 19 (2025-11-11 ~ 2025-11-13): GameState/EffectManager 분리
+  - ✅ Stage 20 (2025-11-13): AnimationManager 통합
+  - ✅ Stage 21 (2025-11-14): 충돌 감지 이벤트 핸들러 분리
+  - ✅ Stage 21.5 (2025-11-14): Ball.update() 메서드 분리
+  - ✅ Stage 22 (2025-11-20): UIManager 추출
+  - ✅ Stage 22.5 (2025-11-20): SceneManager 추출 + UI 객체 제거
+  - ✅ Stage 23 (2025-11-25): 최소 래퍼 함수 제거
+  - ✅ Stage 24 (2025-11-25): update() 함수 분리 (입력/게임로직/애니메이션)
+  - ✅ ~~Stage 25~~: State Pattern 스킵 (과도한 추상화)
+- **다음 단계**: Stage 26 - GameController 통합 (최종)
 
 ## 진행 상황
 
