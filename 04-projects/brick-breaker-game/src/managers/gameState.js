@@ -2,7 +2,7 @@
 // 게임 상태 관리 (단순 객체 + 헬퍼 메서드)
 // ========================================
 
-import { GAME } from './constants.js';
+import { GAME } from '../systems/constants.js';
 
 /**
  * 게임 상태를 관리하는 객체

@@ -2,8 +2,8 @@
 // Ball 클래스
 // ========================================
 
-import { CANVAS, COLORS, BALL, PADDLE, DIFFICULTY_SETTINGS } from './constants.js';
-import { checkRectCircleCollision } from './physics.js';
+import { CANVAS, COLORS, BALL, PADDLE, DIFFICULTY_SETTINGS } from '../systems/constants.js';
+import { checkRectCircleCollision } from '../systems/physics.js';
 
 export class Ball {
     constructor() {

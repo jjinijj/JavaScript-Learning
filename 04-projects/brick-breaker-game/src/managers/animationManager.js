@@ -2,7 +2,7 @@
 // AnimationManager - 게임 내 애니메이션 통합 관리
 // ========================================
 
-import { CANVAS, ANIMATION } from './constants.js';
+import { CANVAS, ANIMATION } from '../systems/constants.js';
 
 /**
  * AnimationManager 클래스

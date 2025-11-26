@@ -9,7 +9,7 @@ import {
     ITEM,
     ANIMATION,
     DIFFICULTY_SETTINGS
-} from './constants.js';
+} from './systems/constants.js';
 
 import {
     initAudio,
@@ -30,30 +30,30 @@ import {
     setSFXVolume,
     getVolume,
     loadVolume
-} from './audio.js';
+} from './managers/audio.js';
 
 import {
     t,
     setLanguage,
     getCurrentLanguage
-} from './i18n.js';
+} from './utils/i18n.js';
 
 import {
     setTheme,
     getCurrentTheme
-} from './theme.js';
+} from './utils/theme.js';
 
 import {
     loadStats,
     updateStats,
     getStats
-} from './stats.js';
+} from './managers/stats.js';
 
 import {
     isRightPressed,
     isLeftPressed,
     setupInputHandlers
-} from './input.js';
+} from './systems/input.js';
 
 import {
     resetAnimations,
@@ -71,7 +71,7 @@ import {
     createPaddleHitWave,
     updatePaddleHitWaves,
     drawPaddleHitWaves
-} from './animations.js';
+} from './systems/animations.js';
 
 import {
     items,
@@ -80,21 +80,21 @@ import {
     updateItemAnimations,
     drawAnimatedItems,
     resetItems as resetItemsModule
-} from './items.js';
+} from './systems/items.js';
 
 import {
     checkRectCircleCollision
-} from './physics.js';
+} from './systems/physics.js';
 
-import { BrickManager } from './bricks.js';
+import { BrickManager } from './entities/bricks.js';
 
-import { Ball } from './ball.js';
-import { Paddle } from './paddle.js';
-import { gameState } from './gameState.js';
-import { EffectManager } from './effectManager.js';
-import { AnimationManager } from './animationManager.js';
-import { UIManager } from './uiManager.js';
-import { SceneManager } from './sceneManager.js';
+import { Ball } from './entities/ball.js';
+import { Paddle } from './entities/paddle.js';
+import { gameState } from './managers/gameState.js';
+import { EffectManager } from './managers/effectManager.js';
+import { AnimationManager } from './managers/animationManager.js';
+import { UIManager } from './managers/uiManager.js';
+import { SceneManager } from './managers/sceneManager.js';
 
 // ========================================
 // 1단계: 캔버스 설정 및 기본 구조
