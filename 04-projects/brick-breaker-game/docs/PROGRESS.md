@@ -1129,7 +1129,7 @@ function update() {
 
 ---
 
-## 다음 할 일
+## 완료된 리팩토링 단계
 - [x] Stage 17: 모듈 분리 리팩토링 완료
 - [x] Stage 18: 게임 객체 OOP 리팩토링 완료
 - [x] 패들 및 공 관련 버그 2건 수정 완료
@@ -1142,8 +1142,123 @@ function update() {
 - [x] Stage 23: 최소 래퍼 함수 제거 완료 (EffectManager 콜백 인라인화)
 - [x] Stage 24: update() 함수 분리 완료 (입력/게임로직/애니메이션)
 - [x] ~~Stage 25: 디자인 패턴 적용 (공 상태 패턴)~~ → **스킵** (과도한 추상화)
-- [ ] Stage 26: GameController 통합 (최종)
-- [ ] 선택 사항: 모바일 터치 컨트롤
+- [x] ~~Stage 26: GameController 통합~~ → **폴더 구조화로 변경** (더 실용적)
+- [x] Stage 26: 폴더 구조화 완료 (역할별 4개 폴더)
+
+## 선택 사항
+- [ ] 모바일 터치 컨트롤 추가
+- [ ] 레벨 시스템 재도입
+
+---
+
+### ✅ Stage 26 완료 (2025-11-26): 폴더 구조화
+
+**목표**: 평면 구조의 src/ 디렉토리를 역할별 폴더로 재구성
+
+**결과**:
+- 4개 폴더 생성: entities, managers, systems, utils
+- 18개 파일 이동 완료
+- 2개 빈 파일 제거
+- 모든 import 경로 업데이트
+
+**설계 결정**:
+- ❌ GameController 클래스 생성 → 불필요한 추상화
+  - game.js는 이미 잘 구성된 오케스트레이터
+  - GameController는 "패턴을 위한 패턴" (glue code를 다른 glue code로 옮기는 것)
+- ✅ 폴더 구조화 채택
+  - 실용적인 개선 (네비게이션, 가독성 향상)
+  - 코드 복잡도 증가 없음
+  - 역할별 명확한 분류
+
+**폴더 구조**:
+```
+src/
+├── game.js                    # 메인 진입점 (849 lines)
+├── entities/                  # 게임 엔티티 (3 files)
+│   ├── ball.js               # Ball 클래스
+│   ├── paddle.js             # Paddle 클래스
+│   └── bricks.js             # Brick, BrickManager 클래스
+├── managers/                  # 게임 매니저 (7 files)
+│   ├── gameState.js          # 게임 상태 관리
+│   ├── effectManager.js      # 아이템 효과 관리
+│   ├── animationManager.js   # 애니메이션 통합 관리
+│   ├── uiManager.js          # UI 표시 업데이트
+│   ├── sceneManager.js       # 화면 전환 관리
+│   ├── audio.js              # 오디오 시스템
+│   └── stats.js              # 통계 저장/로드
+├── systems/                   # 게임 시스템 (5 files)
+│   ├── constants.js          # 상수 정의
+│   ├── physics.js            # 물리 충돌 감지
+│   ├── animations.js         # 애니메이션 효과
+│   ├── items.js              # 아이템 시스템
+│   └── input.js              # 입력 처리
+└── utils/                     # 유틸리티 (2 files)
+    ├── i18n.js               # 다국어 지원
+    └── theme.js              # 테마 시스템
+```
+
+**변경 내역**:
+
+1. **폴더 생성**:
+   ```bash
+   mkdir -p src/entities src/managers src/systems src/utils
+   ```
+
+2. **파일 이동 (git mv 사용, 히스토리 보존)**:
+   - entities/: ball.js, paddle.js, bricks.js
+   - managers/: gameState.js, effectManager.js, animationManager.js, uiManager.js, sceneManager.js, audio.js, stats.js
+   - systems/: constants.js, physics.js, animations.js, items.js, input.js
+   - utils/: i18n.js, theme.js
+
+3. **import 경로 업데이트**:
+
+   **game.js (17개 import 경로 수정)**:
+   ```javascript
+   // Before (평면 구조)
+   import { Ball } from './ball.js';
+   import { Paddle } from './paddle.js';
+   import { CANVAS, COLORS } from './constants.js';
+
+   // After (폴더 구조)
+   import { Ball } from './entities/ball.js';
+   import { Paddle } from './entities/paddle.js';
+   import { CANVAS, COLORS } from './systems/constants.js';
+   ```
+
+   **entities/ 파일들 (상대 경로 업데이트)**:
+   ```javascript
+   // ball.js, paddle.js, bricks.js
+   import { CANVAS } from './constants.js';  // Before
+   import { CANVAS } from '../systems/constants.js';  // After
+   ```
+
+   **managers/ 파일들 (상대 경로 업데이트)**:
+   ```javascript
+   // gameState.js, animationManager.js
+   import { GAME } from './constants.js';  // Before
+   import { GAME } from '../systems/constants.js';  // After
+   ```
+
+4. **빈 파일 제거**:
+   ```bash
+   git rm src/game-core.js
+   git rm src/game-objects.js
+   ```
+
+**개선 효과**:
+- ✅ 파일 네비게이션 향상 (20개 파일 → 4개 폴더)
+- ✅ 역할별 명확한 그룹화
+- ✅ 새 개발자의 코드베이스 이해도 향상
+- ✅ 모듈 의존성 시각화 (import 경로로 역할 파악 가능)
+- ✅ 코드 복잡도 증가 없음 (단순 재구성)
+- ✅ Git 히스토리 보존 (git mv 사용)
+
+**테스트 방법**:
+- 브라우저에서 게임 실행
+- 모든 기능 정상 작동 확인
+- import 경로 에러 없는지 확인
+
+**브랜치**: refactor/folder-structure
 
 ## ⚠️ 프로젝트 완성 시 재검토 사항
 

@@ -196,31 +196,33 @@
     - `resetPaddle()` - 3곳 사용
   - **효과**: game.js 12줄 감소, 유용한 추상화 유지
 
-## 9. GameController 클래스 생성 (최종 통합) - Stage 26
-- [ ] **전체 게임 흐름을 하나의 컨트롤러로 통합**
-  - 현재: game.js에 개별 함수들로 분산
-    - `startGame()`, `togglePause()`, `restartGame()`, `showMenu()`, `gameWin()` 등
-  - 개선: GameController 클래스
-    ```javascript
-    class GameController {
-      constructor(canvas, ctx) {
-        this.ball = new Ball();
-        this.paddle = new Paddle();
-        this.brickManager = new BrickManager();
-        this.animationManager = new AnimationManager();
-        this.uiManager = new UIManager();
-        this.sceneManager = new SceneManager();
-        this.effectManager = new EffectManager();
-      }
-
-      start() { ... }
-      pause() { ... }
-      restart() { ... }
-      update() { ... }
-      draw() { ... }
-    }
+## 9. 폴더 구조화 (코드 구성 개선) - Stage 26
+- [x] **~~GameController 클래스 통합~~ → 폴더 구조화로 변경** ✅ (2025-11-26)
+  - **스킵 이유**:
+    - game.js는 이미 잘 구성된 오케스트레이터 (849줄, 17개 모듈 import)
+    - GameController는 "패턴을 위한 패턴" (glue code를 다른 glue code로 옮기는 것)
+    - 불필요한 추상화 레이어 (YAGNI 원칙)
+  - **대안 선택**: 평면 구조 → 역할별 폴더 구조화
+    - 20개 파일 → 4개 폴더 (entities, managers, systems, utils)
+    - 실용적인 개선: 네비게이션, 가독성 향상
+    - 코드 복잡도 증가 없음
+  - **작업 내용**:
+    - 4개 폴더 생성
+    - 18개 파일 이동 (git mv로 히스토리 보존)
+    - 2개 빈 파일 제거 (game-core.js, game-objects.js)
+    - game.js import 경로 17개 수정
+    - entities/managers 파일들의 상호 import 경로 수정
+  - **폴더 구조**:
     ```
-  - **효과**: 게임 전체 흐름의 명확한 진입점, 의존성 관리 용이
+    src/
+    ├── game.js (메인 진입점)
+    ├── entities/ (ball, paddle, bricks)
+    ├── managers/ (gameState, effectManager, animationManager, uiManager, sceneManager, audio, stats)
+    ├── systems/ (constants, physics, animations, items, input)
+    └── utils/ (i18n, theme)
+    ```
+  - **효과**: 파일 네비게이션 향상, 역할별 명확한 그룹화, 새 개발자의 코드베이스 이해도 향상
+  - **브랜치**: refactor/folder-structure
 
 ---
 
