@@ -2,7 +2,7 @@
 // Brick 클래스 및 BrickManager
 // ========================================
 
-import { BRICK, COLORS, DIFFICULTY_SETTINGS } from './constants.js';
+import { BRICK, COLORS, DIFFICULTY_SETTINGS } from '../systems/constants.js';
 
 // ========================================
 // Brick 클래스

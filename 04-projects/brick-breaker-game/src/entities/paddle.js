@@ -2,7 +2,7 @@
 // Paddle 클래스
 // ========================================
 
-import { CANVAS, COLORS, PADDLE, ANIMATION, DIFFICULTY_SETTINGS } from './constants.js';
+import { CANVAS, COLORS, PADDLE, ANIMATION, DIFFICULTY_SETTINGS } from '../systems/constants.js';
 
 // easeOutElastic 함수 (애니메이션용)
 function easeOutElastic(x) {
